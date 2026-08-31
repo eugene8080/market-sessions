@@ -8,7 +8,13 @@ import java.time.ZoneId
 
 /**
  * Trading hours are the exchange's own regular local trading day, so daylight saving is
- * handled by the zone rules rather than by hand. Mirrors the MARKETS table in index.html.
+ * handled by the zone rules rather than by hand. Mirrors the MARKETS table in index.html,
+ * garmin/source/Markets.mc and tools/verify_zones.py — change one and change all four.
+ *
+ * The convention is the regular cash session: first to last continuous trade. Pre-open and
+ * post-close auctions are excluded, so Sydney starts at 10:00 rather than at its 07:00
+ * pre-open. Midday breaks are not modelled — Tokyo, Hong Kong and Shanghai each shut for
+ * lunch and are treated here as trading straight through.
  */
 data class Market(
     val name: String,
@@ -20,20 +26,21 @@ data class Market(
 private fun at(hour: Int, minute: Int) = LocalTime.of(hour, minute)
 
 val MARKETS: List<Market> = listOf(
-    Market("Sydney", "Australia/Sydney", at(7, 0), at(16, 0)),
-    Market("Tokyo", "Asia/Tokyo", at(9, 0), at(18, 0)),
+    Market("Sydney", "Australia/Sydney", at(10, 0), at(16, 0)),
+    Market("Tokyo", "Asia/Tokyo", at(9, 0), at(15, 30)),
+    Market("Taipei", "Asia/Taipei", at(9, 0), at(13, 30)),
     Market("Singapore", "Asia/Singapore", at(9, 0), at(17, 0)),
-    Market("Hong Kong", "Asia/Hong_Kong", at(9, 30), at(16, 30)),
-    Market("Shanghai", "Asia/Shanghai", at(9, 30), at(15, 30)),
-    Market("Mumbai", "Asia/Kolkata", at(9, 15), at(16, 15)),
-    Market("Frankfurt", "Europe/Berlin", at(8, 0), at(16, 0)),
-    Market("London", "Europe/London", at(8, 0), at(17, 0)),
-    Market("Zurich", "Europe/Zurich", at(9, 0), at(17, 0)),
-    Market("Paris", "Europe/Paris", at(9, 0), at(17, 0)),
-    Market("Amsterdam", "Europe/Amsterdam", at(9, 0), at(17, 0)),
-    Market("Toronto", "America/Toronto", at(9, 30), at(16, 30)),
-    Market("New York", "America/New_York", at(8, 0), at(17, 0)),
-    Market("NASDAQ", "America/New_York", at(9, 30), at(16, 30)),
+    Market("Hong Kong", "Asia/Hong_Kong", at(9, 30), at(16, 0)),
+    Market("Shanghai", "Asia/Shanghai", at(9, 30), at(15, 0)),
+    Market("Mumbai", "Asia/Kolkata", at(9, 15), at(15, 30)),
+    Market("Frankfurt", "Europe/Berlin", at(9, 0), at(17, 30)),
+    Market("London", "Europe/London", at(8, 0), at(16, 30)),
+    Market("Zurich", "Europe/Zurich", at(9, 0), at(17, 30)),
+    Market("Paris", "Europe/Paris", at(9, 0), at(17, 30)),
+    Market("Amsterdam", "Europe/Amsterdam", at(9, 0), at(17, 30)),
+    Market("Toronto", "America/Toronto", at(9, 30), at(16, 0)),
+    Market("New York", "America/New_York", at(9, 30), at(16, 0)),
+    Market("NASDAQ", "America/New_York", at(9, 30), at(16, 0)),
 )
 
 data class Session(val start: Instant, val end: Instant)

@@ -1,0 +1,17 @@
+<svg width="40" height="40" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    The 24 hour dial reduced to what still reads at launcher size: the ring, one open session in
+    the app's green, one waiting session in its grey, and a hand. Colours are the dark theme from
+    index.html so the launcher icon matches the app it opens.
+
+    The drawing stays on the 48 unit grid; only width and height change between the two device
+    copies of this file, so the compiler rasterises the vector at exactly the size the device asks
+    for instead of scaling a bitmap. This copy is the 40x40 the tactix 8 Solar wants.
+  -->
+  <circle cx="24" cy="24" r="23" fill="#151821"/>
+  <circle cx="24" cy="24" r="19" fill="none" stroke="#3C4761" stroke-width="4"/>
+  <path d="M34 6.68 A20 20 0 0 1 30.84 42.79" fill="none" stroke="#41C391" stroke-width="4" stroke-linecap="butt"/>
+  <path d="M19.21 37.16 A14 14 0 0 1 11.88 17" fill="none" stroke="#8F97B6" stroke-width="3" stroke-linecap="butt"/>
+  <line x1="24" y1="24" x2="31.78" y2="16.22" stroke="#C3CBDF" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="24" cy="24" r="2.4" fill="#C3CBDF"/>
+</svg>
