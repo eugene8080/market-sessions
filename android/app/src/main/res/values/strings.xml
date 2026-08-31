@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Market Sessions</string>
+    <string name="widget_description">A 24 hour dial of the world\'s exchange trading sessions.</string>
+    <string name="dial_description">Market session dial</string>
+    <string name="intro">A 24 hour dial of the world\'s stock exchange sessions, as a home screen widget. Green bands are trading now, grey bands are the next session. Tap the widget to open the full web app.</string>
+    <string name="add_widget">Add the widget to my home screen</string>
+    <string name="exact_alarms_explainer">Android is not letting this app schedule exact alarms, so the dial hands may lag by a few minutes. The digital time keeps ticking either way.</string>
+    <string name="exact_alarms_button">Allow exact alarms</string>
+    <string name="open_web_app">Open the web app</string>
+    <string name="pin_unsupported">Your launcher cannot add widgets this way. Long press the home screen, choose Widgets, then find Market Sessions.</string>
+</resources>
