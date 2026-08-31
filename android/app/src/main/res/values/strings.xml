@@ -1,10 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Market Sessions</string>
+
+    <string name="widget_label_large">Market Sessions 3×3</string>
+    <string name="widget_label_medium">Market Sessions 2×2</string>
+    <string name="widget_label_small">Market Sessions 1×1</string>
+
     <string name="widget_description">A 24 hour dial of the world\'s exchange trading sessions.</string>
+    <string name="widget_description_medium">The session dial without the band labels, for two cells.</string>
+    <string name="widget_description_small">Bands and hands only, for a single cell.</string>
+
     <string name="dial_description">Market session dial</string>
     <string name="intro">A 24 hour dial of the world\'s stock exchange sessions, as a home screen widget. Green bands are trading now, grey bands are the next session. Tap the widget to open the full web app.</string>
-    <string name="add_widget">Add the widget to my home screen</string>
+    <string name="add_widget_large">Add the 3×3 widget</string>
+    <string name="add_widget_medium">Add the 2×2 widget</string>
+    <string name="add_widget_small">Add the 1×1 widget</string>
+    <string name="sizes_note">All three sizes stay resizable once placed, and they also appear in your launcher\'s own widget picker.</string>
     <string name="exact_alarms_explainer">Android is not letting this app schedule exact alarms, so the dial hands may lag by a few minutes. The digital time keeps ticking either way.</string>
     <string name="exact_alarms_button">Allow exact alarms</string>
     <string name="open_web_app">Open the web app</string>

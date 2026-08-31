@@ -10,11 +10,30 @@ import android.graphics.Typeface
 import java.time.Instant
 
 /**
+ * How much of the dial survives at a given widget size. Decoration is dropped as the cell shrinks
+ * rather than scaled down into illegibility; MINI drops the hour ring altogether and zooms the
+ * bands into the space it leaves, so a one cell widget still reads as a ring of open markets.
+ */
+enum class DialStyle(
+    val hourLabelStep: Int,
+    val hourTextSize: Float,
+    val grid: Boolean,
+    val ring: Boolean,
+    val bandLabels: Boolean,
+    val zoom: Float,
+    val minBitmap: Int,
+) {
+    FULL(hourLabelStep = 1, hourTextSize = 11f, grid = true, ring = true, bandLabels = true, zoom = 1f, minBitmap = 288),
+    COMPACT(hourLabelStep = 6, hourTextSize = 15f, grid = false, ring = true, bandLabels = false, zoom = 1f, minBitmap = 224),
+    MINI(hourLabelStep = 0, hourTextSize = 0f, grid = false, ring = false, bandLabels = false, zoom = 1.2f, minBitmap = 160),
+}
+
+/**
  * Draws the 24 hour dial as a bitmap for the widget's ImageView. It is a port of the SVG in
  * index.html: the same 400 unit design grid, the same geometry constants, the app's dark palette.
  * The minute ring labels and the second hand are dropped, both illegible at widget size.
  */
-class DialRenderer(private val size: Int) {
+class DialRenderer(private val size: Int, private val style: DialStyle = DialStyle.FULL) {
 
     private object Palette {
         const val DIAL_BG = 0xFF151821.toInt()
@@ -40,7 +59,7 @@ class DialRenderer(private val size: Int) {
     private val hourText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-        textSize = 11f
+        textSize = style.hourTextSize
         color = Palette.RING_TEXT
     }
 
@@ -56,6 +75,7 @@ class DialRenderer(private val size: Int) {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.scale(size / 400f, size / 400f)
+        if (style.zoom != 1f) canvas.scale(style.zoom, style.zoom, CENTER, CENTER)
 
         face(canvas)
         states.forEachIndexed { index, state -> band(canvas, index, state) }
@@ -65,27 +85,33 @@ class DialRenderer(private val size: Int) {
     }
 
     private fun face(canvas: Canvas) {
-        fill.color = Palette.DIAL_BG
-        canvas.drawCircle(CENTER, CENTER, 188f, fill)
+        if (style.ring) {
+            fill.color = Palette.DIAL_BG
+            canvas.drawCircle(CENTER, CENTER, 188f, fill)
 
-        stroke.color = Palette.RING
-        stroke.strokeWidth = 22f
-        canvas.drawCircle(CENTER, CENTER, 177f, stroke)
-
-        stroke.color = Palette.GRID
-        stroke.strokeWidth = 0.7f
-        for (hour in 0 until 24) {
-            val degrees = hour / 24f * 360f
-            val inner = polar(22f, degrees)
-            val outer = polar(163f, degrees)
-            canvas.drawLine(inner.x, inner.y, outer.x, outer.y, stroke)
+            stroke.color = Palette.RING
+            stroke.strokeWidth = 22f
+            canvas.drawCircle(CENTER, CENTER, 177f, stroke)
         }
 
-        val metrics = hourText.fontMetrics
-        val baseline = -(metrics.ascent + metrics.descent) / 2f
-        for (hour in 1..24) {
-            val point = polar(177f, hour / 24f * 360f)
-            canvas.drawText(hour.toString().padStart(2, '0'), point.x, point.y + baseline, hourText)
+        if (style.grid) {
+            stroke.color = Palette.GRID
+            stroke.strokeWidth = 0.7f
+            for (hour in 0 until 24) {
+                val degrees = hour / 24f * 360f
+                val inner = polar(22f, degrees)
+                val outer = polar(163f, degrees)
+                canvas.drawLine(inner.x, inner.y, outer.x, outer.y, stroke)
+            }
+        }
+
+        if (style.hourLabelStep > 0) {
+            val metrics = hourText.fontMetrics
+            val baseline = -(metrics.ascent + metrics.descent) / 2f
+            for (hour in style.hourLabelStep..24 step style.hourLabelStep) {
+                val point = polar(177f, hour / 24f * 360f)
+                canvas.drawText(hour.toString().padStart(2, '0'), point.x, point.y + baseline, hourText)
+            }
         }
     }
 
@@ -102,7 +128,7 @@ class DialRenderer(private val size: Int) {
         stroke.strokeCap = Paint.Cap.BUTT
         canvas.drawArc(ovalAt(radius), from - 90f, to - from, false, stroke)
 
-        label(canvas, state.market.name.uppercase(), radius, from, to)
+        if (style.bandLabels) label(canvas, state.market.name.uppercase(), radius, from, to)
     }
 
     /** Curved band label, the Canvas equivalent of the SVG textPath in the web app. */
