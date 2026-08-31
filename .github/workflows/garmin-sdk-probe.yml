@@ -49,29 +49,36 @@ jobs:
           echo "--- bin ---"
           ls sdk/bin 2>/dev/null | head -40
 
-      - name: Can it compile, and for which watches?
+      - name: Enumerate every device the SDK ships reference data for
         run: |
-          [ -d sdk/bin ] || { echo "no sdk/bin, nothing further to try"; exit 0; }
           chmod -R +x sdk/bin 2>/dev/null || true
-          echo "--- monkeyc ---"
-          sdk/bin/monkeyc --version 2>&1 | head -5 || echo "monkeyc would not run"
+          sdk/bin/monkeyc --version 2>&1 | head -2
           echo
-          echo "--- device definitions inside the SDK? ---"
-          find sdk -maxdepth 4 -type d -iname '*device*' | head -20
-          find sdk -maxdepth 4 -iname 'devices*.xml' -o -maxdepth 4 -iname 'devices*.json' | head -20
-          echo
-          echo "--- fenix 8 / tactix 8 anywhere in the SDK ---"
-          grep -rIl -iE 'fenix8|tactix8' sdk 2>/dev/null | head -10 || true
-          echo
-          echo "--- every device id the compiler admits to knowing ---"
-          sdk/bin/monkeyc --device-list 2>&1 | head -40 || echo "(no --device-list option)"
-          ls "$HOME/.Garmin/ConnectIQ/Devices" 2>/dev/null | head -40 || echo "(no ~/.Garmin device store; targets come from the SDK manager)"
+          echo "--- device ids under sdk/resources/device-reference ---"
+          ls sdk/resources/device-reference 2>/dev/null | wc -l
+          echo "--- the ones you care about ---"
+          ls sdk/resources/device-reference 2>/dev/null | grep -iE 'fenix8|tactix' || echo "(none matched)"
 
-      - name: What is in the SDK manager, if devices are not in the SDK
+      - name: Does monkeyc accept a fenix 8 as a target?
+        run: |
+          # A deliberately missing jungle. If the compiler rejects the device first, the target
+          # is unknown to it; if it complains about the jungle, the device resolved fine.
+          for dev in fenix843mm fenix847mm tactix8 nosuchwatch; do
+            echo "=== -d $dev ==="
+            sdk/bin/monkeyc -d "$dev" -f /nonexistent.jungle -o /tmp/x.prg 2>&1 | head -4
+            echo
+          done
+
+      - name: Can the SDK manager fetch device targets without a GUI?
         run: |
           curl -sSL --max-time 300 \
             https://developer.garmin.com/downloads/connect-iq/sdk-manager/connectiq-sdk-manager-linux.zip \
             -o mgr.zip || { echo "download failed"; exit 0; }
-          echo "zip bytes: $(stat -c%s mgr.zip)"
           mkdir -p mgr && unzip -q mgr.zip -d mgr || { echo "unzip failed"; exit 0; }
-          find mgr -maxdepth 2 | head -30
+          chmod -R +x mgr/bin 2>/dev/null || true
+          echo "--- what it is ---"
+          file mgr/bin/sdkmanager
+          echo "--- share tree ---"
+          find mgr/share -maxdepth 3 | head -20
+          echo "--- does it take arguments? ---"
+          timeout 25 mgr/bin/sdkmanager --help 2>&1 | head -20 || echo "(no help, exit $?)"
