@@ -50,8 +50,10 @@ widget is a `TextClock` that ticks by itself regardless.
 
 ## Customising
 
-- `Config.displayZone` — the dial is drawn in GMT+0 like the web app's default. Change it to
-  `ZoneId.systemDefault()` for phone local time.
+- `Config.displayZone()` — the dial is drawn in the phone's own zone, so it agrees with the
+  status bar clock. Return `ZoneId.of("UTC")` to pin it to GMT+0, matching the web app's default
+  setting. It is read on every redraw, so travelling or a clock change is picked up on the next
+  tick.
 - `Config.WEB_APP_URL` — where tapping the widget goes.
 - `MARKETS` in `Markets.kt` — add, remove, or re-time an exchange. Keep it under about 16 entries;
   each band is a 9 unit ring inside a 157 unit radius, so the innermost band runs out of room

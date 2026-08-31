@@ -160,7 +160,7 @@ class DialRenderer(private val size: Int) {
     private fun degreesOf(instant: Instant) = minuteOfDay(instant) / 1440f * 360f
 
     private fun minuteOfDay(instant: Instant): Float {
-        val time = instant.atZone(Config.displayZone)
+        val time = instant.atZone(Config.displayZone())
         return time.hour * 60f + time.minute + time.second / 60f
     }
 
