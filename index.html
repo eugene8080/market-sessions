@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#14161c">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>Market Sessions</title>
+<style>
+:root{
+  --bg:#f6f7fb; --header:#16181f; --header-text:#f2f4f8;
+  --text:#2c3242; --muted:#7a839a; --hair:rgba(44,50,66,.10);
+  --card:#eceef7; --card-open:#e4f5ec;
+  --ring:#4a5674; --ring-text:#ffffff;
+  --closed:#aab1cd; --open:#4ec79a; --dial-bg:#ffffff;
+  --hand:#3a4560; --second:#e2574c; --tick:#b9bfd2;
+  --tab:#8b93a8; --tab-on:#16181f;
+}
+[data-theme="dark"]{
+  --bg:#101218; --header:#0b0c10; --header-text:#e8eaf0;
+  --text:#e6e9f0; --muted:#8c94a8; --hair:rgba(255,255,255,.09);
+  --card:#1c1f28; --card-open:#16302a;
+  --ring:#3c4761; --ring-text:#eef1f8;
+  --closed:#8f97b6; --open:#41c391; --dial-bg:#151821;
+  --hand:#c3cbdf; --second:#ef6a5e; --tick:#5b6379;
+  --tab:#767e93; --tab-on:#41c391;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:"Avenir Next","Nunito Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:16px; line-height:1.35;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+[hidden]{display:none!important}
+
+header{
+  background:var(--header); color:var(--header-text);
+  padding:calc(env(safe-area-inset-top) + 14px) 16px 14px;
+  display:flex; align-items:center; justify-content:center; position:relative; flex:0 0 auto;
+}
+header h1{margin:0; font-size:1.22rem; font-weight:600; letter-spacing:.01em}
+header button{
+  position:absolute; right:12px; top:calc(env(safe-area-inset-top) + 10px);
+  background:none; border:0; color:var(--header-text); font-size:1.2rem;
+  padding:6px 8px; cursor:pointer; opacity:.85;
+}
+
+main{flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 14px 26px}
+
+.dialwrap{padding:10px 0 4px}
+svg.dial{display:block; width:100%; height:auto; max-width:460px; margin:0 auto}
+
+.sechead{
+  display:flex; align-items:baseline; justify-content:space-between;
+  padding:22px 4px 10px; color:var(--muted);
+}
+.sechead h2{margin:0; font-size:1.12rem; font-weight:500; color:var(--muted)}
+.clockline{font-variant-numeric:tabular-nums; font-size:1.02rem; letter-spacing:.02em}
+
+.card{
+  display:flex; align-items:center; gap:14px;
+  background:var(--card); border-radius:20px; padding:14px 16px; margin-bottom:12px;
+  border:1px solid transparent; cursor:pointer;
+}
+.card.open{background:var(--card-open); border-color:rgba(78,199,154,.28)}
+.flag{
+  width:52px; height:52px; flex:0 0 52px; border-radius:50%;
+  display:grid; place-items:center; font-size:30px; line-height:1;
+  background:var(--dial-bg); box-shadow:0 0 0 3px var(--hair) inset; overflow:hidden;
+}
+.who{flex:1 1 auto; min-width:0}
+.who b{display:block; font-size:1.24rem; font-weight:600; letter-spacing:-.01em}
+.who span{display:block; color:var(--muted); font-size:1rem; font-variant-numeric:tabular-nums}
+.count{text-align:center; flex:0 0 auto; min-width:118px}
+.count > i{display:block; font-style:normal; color:var(--muted); font-size:.86rem; margin-bottom:2px}
+.count .pair{display:flex; gap:16px; justify-content:center}
+.count .pair div{min-width:44px}
+.count strong{display:block; font-size:1.5rem; font-weight:600; font-variant-numeric:tabular-nums}
+.count small{display:block; color:var(--muted); font-size:.76rem}
+
+.clockrow{display:flex; align-items:center; gap:14px; padding:13px 4px; border-bottom:1px solid var(--hair)}
+.clockrow:last-child{border-bottom:0}
+.clockrow .who b{font-size:1.06rem}
+.clockrow .t{margin-left:auto; text-align:right}
+.clockrow .t strong{font-size:1.3rem; font-weight:600; font-variant-numeric:tabular-nums}
+.clockrow .t span{display:block; color:var(--muted); font-size:.82rem}
+.dot{width:9px; height:9px; border-radius:50%; background:var(--closed); flex:0 0 9px}
+.dot.on{background:var(--open)}
+
+.group{background:var(--card); border-radius:20px; padding:6px 16px; margin-bottom:16px}
+.group h3{font-size:.92rem; font-weight:600; color:var(--muted); margin:14px 0 6px}
+.opt{display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--hair)}
+.opt:last-child{border-bottom:0}
+.opt label{flex:1 1 auto}
+.seg{display:flex; gap:6px; background:var(--bg); padding:4px; border-radius:12px}
+.seg button{
+  border:0; background:none; color:var(--muted); font:inherit; font-size:.9rem;
+  padding:7px 12px; border-radius:9px; cursor:pointer;
+}
+.seg button[aria-pressed="true"]{background:var(--open); color:#08221a; font-weight:600}
+input[type=checkbox]{width:22px; height:22px; accent-color:var(--open)}
+.note{color:var(--muted); font-size:.86rem; padding:0 4px 8px}
+
+nav{
+  flex:0 0 auto; display:flex; background:var(--bg);
+  border-top:1px solid var(--hair);
+  padding:8px 0 calc(env(safe-area-inset-bottom) + 8px);
+}
+nav button{
+  flex:1; background:none; border:0; color:var(--tab); font:inherit; font-size:.82rem;
+  display:flex; flex-direction:column; align-items:center; gap:5px; padding:4px 0; cursor:pointer;
+}
+nav button[aria-current="true"]{color:var(--tab-on); font-weight:600}
+nav svg{width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:1.6}
+
+.hourlabel{fill:var(--ring-text); font-size:11px; font-weight:600}
+.ticklabel{fill:var(--tick); font-size:7.5px}
+.bandlabel{fill:#fff; font-size:6px; font-weight:700; letter-spacing:.55px}
+[data-theme="dark"] .bandlabel{fill:#0e1116}
+.grid{stroke:var(--hair); stroke-width:.7}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Market Sessions</h1>
+  <button id="themeBtn" title="Switch theme">◐</button>
+</header>
+
+<main id="v-sessions">
+  <div class="dialwrap"><svg class="dial" id="dial" viewBox="0 0 400 400" role="img" aria-label="24 hour market session dial"></svg></div>
+  <div class="sechead"><h2>Open now</h2><div class="clockline" id="clk1">--:--:--</div></div>
+  <div id="openList"></div>
+  <div class="sechead"><h2>Closed</h2><div class="clockline" id="clk2">--:--:--</div></div>
+  <div id="closedList"></div>
+</main>
+
+<main id="v-clocks" hidden>
+  <div class="sechead"><h2>World clocks</h2><div class="clockline" id="clk3">--:--:--</div></div>
+  <div class="group" id="clockList"></div>
+</main>
+
+<main id="v-settings" hidden>
+  <div class="sechead"><h2>Settings</h2></div>
+  <div class="group">
+    <div class="opt"><label for="segTheme">Appearance</label>
+      <div class="seg" id="segTheme">
+        <button data-v="auto">Auto</button><button data-v="light">Light</button><button data-v="dark">Dark</button>
+      </div>
+    </div>
+    <div class="opt"><label for="segTz">Show times in</label>
+      <div class="seg" id="segTz"><button data-v="utc">GMT+0</button><button data-v="local">My time</button></div>
+    </div>
+    <div class="opt"><label for="chkSec">Seconds hand</label><input type="checkbox" id="chkSec" checked></div>
+  </div>
+  <div class="note">Hours are the exchange's regular local trading day, converted for daylight saving automatically. Weekends are treated as closed; public holidays are not.</div>
+  <div class="group" id="mktList"><h3>Markets shown</h3></div>
+</main>
+
+<nav>
+  <button data-view="sessions" aria-current="true">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>Sessions</button>
+  <button data-view="clocks">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="2 2.6"/><path d="M12 7v5l3.5 2"/></svg>World clocks</button>
+  <button data-view="settings">
+    <svg viewBox="0 0 24 24"><path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2.2"/><circle cx="10" cy="16" r="2.2"/></svg>Settings</button>
+</nav>
+
+<script>
+/* ------------------------------------------------------------------
+   Trading hours are written in each exchange's own local time, so DST
+   is handled automatically. Edit here to add or change a market.
+------------------------------------------------------------------ */
+const MARKETS = [
+  {n:'Sydney',    f:'🇦🇺', tz:'Australia/Sydney', o:[7,0],  c:[16,0]},
+  {n:'Tokyo',     f:'🇯🇵', tz:'Asia/Tokyo',       o:[9,0],  c:[18,0]},
+  {n:'Singapore', f:'🇸🇬', tz:'Asia/Singapore',   o:[9,0],  c:[17,0]},
+  {n:'Hong Kong', f:'🇭🇰', tz:'Asia/Hong_Kong',   o:[9,30], c:[16,30]},
+  {n:'Shanghai',  f:'🇨🇳', tz:'Asia/Shanghai',    o:[9,30], c:[15,30]},
+  {n:'Mumbai',    f:'🇮🇳', tz:'Asia/Kolkata',     o:[9,15], c:[16,15]},
+  {n:'Frankfurt', f:'🇩🇪', tz:'Europe/Berlin',    o:[8,0],  c:[16,0]},
+  {n:'London',    f:'🇬🇧', tz:'Europe/London',    o:[8,0],  c:[17,0]},
+  {n:'Zurich',    f:'🇨🇭', tz:'Europe/Zurich',    o:[9,0],  c:[17,0]},
+  {n:'Paris',     f:'🇫🇷', tz:'Europe/Paris',     o:[9,0],  c:[17,0]},
+  {n:'Amsterdam', f:'🇳🇱', tz:'Europe/Amsterdam', o:[9,0],  c:[17,0]},
+  {n:'Toronto',   f:'🇨🇦', tz:'America/Toronto',  o:[9,30], c:[16,30]},
+  {n:'New York',  f:'🇺🇸', tz:'America/New_York', o:[8,0],  c:[17,0]},
+  {n:'NASDAQ',    f:'🇺🇸', tz:'America/New_York', o:[9,30], c:[16,30]}
+];
+
+const state = {theme:'auto', tzMode:'utc', seconds:true, off:MARKETS.map(()=>false)};
+
+/* ---------- time zone helpers ---------- */
+const fmtCache = new Map();
+function dtf(tz){
+  if(!fmtCache.has(tz)) fmtCache.set(tz, new Intl.DateTimeFormat('en-GB',{timeZone:tz,hourCycle:'h23',
+    year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+  return fmtCache.get(tz);
+}
+function partsIn(tz,t){
+  const p={}; for(const x of dtf(tz).formatToParts(new Date(t))) p[x.type]=x.value;
+  return {y:+p.year, m:+p.month, d:+p.day, hh:+p.hour, mm:+p.minute, ss:+p.second};
+}
+const offCache = new Map();
+function tzOffset(tz,t){                       // minutes east of UTC
+  const key = tz+'|'+Math.floor(t/1800000);
+  if(offCache.has(key)) return offCache.get(key);
+  const p = partsIn(tz,t);
+  const off = Math.round((Date.UTC(p.y,p.m-1,p.d,p.hh,p.mm,p.ss) - Math.floor(t/1000)*1000)/60000);
+  offCache.set(key,off); return off;
+}
+function localToUTC(tz,y,m,d,hh,mm){
+  const guess = Date.UTC(y,m-1,d,hh,mm);
+  let t = guess - tzOffset(tz,guess)*60000;
+  t = guess - tzOffset(tz,t)*60000;
+  return t;
+}
+function sessionsFor(mk,now){
+  const p = partsIn(mk.tz,now), list=[];
+  for(let i=-2;i<=9;i++){
+    const b = new Date(Date.UTC(p.y,p.m-1,p.d)+i*864e5), dow=b.getUTCDay();
+    if(dow===0||dow===6) continue;
+    const y=b.getUTCFullYear(), m=b.getUTCMonth()+1, d=b.getUTCDate();
+    list.push({s:localToUTC(mk.tz,y,m,d,mk.o[0],mk.o[1]), e:localToUTC(mk.tz,y,m,d,mk.c[0],mk.c[1])});
+  }
+  list.sort((a,b)=>a.s-b.s);
+  return {cur:list.find(x=>now>=x.s&&now<x.e)||null, next:list.find(x=>x.s>now)||null};
+}
+const dispOff = ()=> state.tzMode==='utc' ? 0 : -new Date().getTimezoneOffset();
+const minOfDay = t => (((t/60000 + dispOff()) % 1440) + 1440) % 1440;
+const hhmm = m => String(Math.floor(m/60)).padStart(2,'0')+':'+String(Math.round(m)%60).padStart(2,'0');
+function tzLabel(){
+  if(state.tzMode==='utc') return 'GMT+0';
+  const o=-new Date().getTimezoneOffset(), s=o<0?'-':'+', a=Math.abs(o);
+  return 'GMT'+s+Math.floor(a/60)+(a%60?':'+String(a%60).padStart(2,'0'):'');
+}
+
+/* ---------- dial ---------- */
+const C=200, R_BAND_OUT=157, BAND=7.2, STEP=9.0;
+const polar=(r,deg)=>{const a=(deg-90)*Math.PI/180; return [C+r*Math.cos(a), C+r*Math.sin(a)];};
+function arc(r,d0,d1,rev){
+  if(rev){const [x0,y0]=polar(r,d1),[x1,y1]=polar(r,d0);return `M${x0} ${y0} A${r} ${r} 0 ${d1-d0>180?1:0} 0 ${x1} ${y1}`;}
+  const [x0,y0]=polar(r,d0),[x1,y1]=polar(r,d1);
+  return `M${x0} ${y0} A${r} ${r} 0 ${d1-d0>180?1:0} 1 ${x1} ${y1}`;
+}
+function buildDial(){
+  let s = `<circle cx="200" cy="200" r="188" fill="var(--dial-bg)"/>
+  <circle cx="200" cy="200" r="177" fill="none" stroke="var(--ring)" stroke-width="22"/>`;
+  for(let h=1;h<=24;h++){const [x,y]=polar(177,h/24*360);
+    s+=`<text class="hourlabel" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="central">${String(h).padStart(2,'0')}</text>`;}
+  for(let t=5;t<=60;t+=5){const [x,y]=polar(150,t/60*360);
+    s+=`<text class="ticklabel" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="central">${t}</text>`;}
+  for(let h=0;h<24;h++){const [x0,y0]=polar(22,h/24*360),[x1,y1]=polar(163,h/24*360);
+    s+=`<line class="grid" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/>`;}
+  s+=`<g id="bands"></g>
+  <line id="hHour" x1="200" y1="200" x2="200" y2="60" stroke="var(--hand)" stroke-width="5.5" stroke-linecap="round"/>
+  <line id="hMin"  x1="200" y1="200" x2="200" y2="48" stroke="var(--hand)" stroke-width="4" stroke-linecap="round"/>
+  <line id="hSec"  x1="200" y1="200" x2="200" y2="40" stroke="var(--second)" stroke-width="1.4" stroke-linecap="round"/>
+  <circle cx="200" cy="200" r="8" fill="var(--hand)"/>`;
+  document.getElementById('dial').innerHTML = s;
+}
+function renderBands(sess){
+  let out='';
+  MARKETS.forEach((mk,i)=>{
+    if(state.off[i]) return;
+    const r = R_BAND_OUT - i*STEP - BAND/2;
+    const w = sess[i].cur || sess[i].next; if(!w) return;
+    let d0 = minOfDay(w.s)/1440*360, d1 = minOfDay(w.e)/1440*360;
+    if(d1<=d0) d1+=360;
+    const col = sess[i].cur ? 'var(--open)' : 'var(--closed)';
+    out += `<path d="${arc(r,d0,d1)}" stroke="${col}" stroke-width="${BAND}" fill="none"/>`;
+    const mid = ((d0+d1)/2)%360, rev = mid>180;
+    out += `<path id="lp${i}" d="${arc(r,d0,d1,rev)}" fill="none"/>`;
+    out += `<text class="bandlabel" dominant-baseline="central"><textPath href="#lp${i}" startOffset="50%" text-anchor="middle">${mk.n.toUpperCase()}</textPath></text>`;
+  });
+  document.getElementById('bands').innerHTML = out;
+}
+function renderHands(now){
+  const m = minOfDay(now), sec = (now/1000)%60;
+  const set=(id,deg,len)=>{const [x,y]=polar(len,deg); const el=document.getElementById(id);
+    el.setAttribute('x2',x.toFixed(1)); el.setAttribute('y2',y.toFixed(1));};
+  set('hHour', (m/1440)*360, 118);
+  set('hMin',  ((m%60)/60)*360, 146);
+  const s=document.getElementById('hSec');
+  s.style.display = state.seconds ? '' : 'none';
+  set('hSec', (sec/60)*360, 152);
+}
+
+/* ---------- lists ---------- */
+function dur(ms){
+  const t=Math.max(0,Math.floor(ms/1000));
+  const h=Math.floor(t/3600), m=Math.floor(t%3600/60), s=t%60;
+  return h>0 ? [[h,'Hours'],[m,'Minutes']] : [[m,'Minutes'],[s,'Seconds']];
+}
+function card(mk,w,open,now){
+  const [a,b] = dur(open ? w.e-now : w.s-now);
+  return `<div class="card${open?' open':''}">
+    <div class="flag">${mk.f}</div>
+    <div class="who"><b>${mk.n}</b><span>${hhmm(minOfDay(w.s))} to ${hhmm(minOfDay(w.e))}</span></div>
+    <div class="count"><i>${open?'Closes in':'Opens in'}</i><div class="pair">
+      <div><strong>${a[0]}</strong><small>${a[1]}</small></div>
+      <div><strong>${b[0]}</strong><small>${b[1]}</small></div>
+    </div></div></div>`;
+}
+function renderLists(sess,now){
+  const op=[], cl=[];
+  MARKETS.forEach((mk,i)=>{
+    if(state.off[i]) return;
+    if(sess[i].cur) op.push({mk,w:sess[i].cur,k:sess[i].cur.e});
+    else if(sess[i].next) cl.push({mk,w:sess[i].next,k:sess[i].next.s});
+  });
+  op.sort((a,b)=>a.k-b.k); cl.sort((a,b)=>a.k-b.k);
+  document.getElementById('openList').innerHTML =
+    op.length ? op.map(x=>card(x.mk,x.w,true,now)).join('') :
+    '<div class="note">Every market is closed right now. The next open is at the top of the list below.</div>';
+  document.getElementById('closedList').innerHTML = cl.map(x=>card(x.mk,x.w,false,now)).join('');
+}
+function renderClocks(sess,now){
+  const rows = MARKETS.map((mk,i)=>{
+    if(state.off[i]) return '';
+    const p = partsIn(mk.tz,now), on = !!sess[i].cur;
+    const off = tzOffset(mk.tz,now), sg = off<0?'-':'+', ab=Math.abs(off);
+    return `<div class="clockrow"><div class="dot${on?' on':''}"></div>
+      <div class="flag" style="width:38px;height:38px;flex:0 0 38px;font-size:21px">${mk.f}</div>
+      <div class="who"><b>${mk.n}</b><span>${on?'Trading':'Closed'}</span></div>
+      <div class="t"><strong>${String(p.hh).padStart(2,'0')}:${String(p.mm).padStart(2,'0')}:${String(p.ss).padStart(2,'0')}</strong>
+      <span>GMT${sg}${Math.floor(ab/60)}${ab%60?':'+String(ab%60).padStart(2,'0'):''}</span></div></div>`;
+  }).join('');
+  document.getElementById('clockList').innerHTML = rows;
+}
+
+/* ---------- settings ---------- */
+function buildSettings(){
+  const box = document.getElementById('mktList');
+  box.innerHTML = '<h3>Markets shown</h3>' + MARKETS.map((mk,i)=>
+    `<div class="opt"><span class="flag" style="width:30px;height:30px;flex:0 0 30px;font-size:17px">${mk.f}</span>
+     <label for="mk${i}">${mk.n}</label><input type="checkbox" id="mk${i}" data-i="${i}" ${state.off[i]?'':'checked'}></div>`).join('');
+  box.querySelectorAll('input').forEach(el=>el.addEventListener('change',()=>{
+    state.off[+el.dataset.i] = !el.checked; save(); tick(true);
+  }));
+  syncSegs();
+}
+function syncSegs(){
+  document.querySelectorAll('#segTheme button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===state.theme));
+  document.querySelectorAll('#segTz button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===state.tzMode));
+  document.getElementById('chkSec').checked = state.seconds;
+}
+function applyTheme(){
+  const dark = state.theme==='dark' || (state.theme==='auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+}
+const KEY='marketSessions:v1';
+async function save(){
+  const v = JSON.stringify(state);
+  try{ await window.storage.set(KEY, v); return; }catch(e){}
+  try{ localStorage.setItem(KEY, v); }catch(e){}
+}
+async function load(){
+  try{ const r = await window.storage.get(KEY);
+       if(r && r.value){ Object.assign(state, JSON.parse(r.value)); return; } }catch(e){}
+  try{ const v = localStorage.getItem(KEY); if(v) Object.assign(state, JSON.parse(v)); }catch(e){}
+}
+
+/* ---------- loop ---------- */
+let cache = null, cacheAt = 0;
+function tick(force){
+  const now = Date.now();
+  if(force || !cache || now-cacheAt > 20000){
+    cache = MARKETS.map(mk=>sessionsFor(mk,now));
+    cacheAt = now;
+    renderBands(cache);
+  }
+  renderHands(now);
+  const m = minOfDay(now), s = String(Math.floor((now/1000)%60)).padStart(2,'0');
+  const label = hhmm(m)+':'+s+'  '+tzLabel();
+  clk1.textContent = label; clk2.textContent = label; clk3.textContent = label;
+  renderLists(cache, now);
+  if(!document.getElementById('v-clocks').hidden) renderClocks(cache, now);
+}
+
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.setAttribute('aria-current', x===b));
+  ['sessions','clocks','settings'].forEach(v=>document.getElementById('v-'+v).hidden = (v!==b.dataset.view));
+  tick(true);
+}));
+document.getElementById('themeBtn').addEventListener('click',()=>{
+  state.theme = document.documentElement.dataset.theme==='dark' ? 'light' : 'dark';
+  applyTheme(); syncSegs(); save();
+});
+document.getElementById('segTheme').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return; state.theme=b.dataset.v; applyTheme(); syncSegs(); save();
+});
+document.getElementById('segTz').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return; state.tzMode=b.dataset.v; syncSegs(); save(); tick(true);
+});
+document.getElementById('chkSec').addEventListener('change',e=>{ state.seconds=e.target.checked; save(); tick(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
+
+(async function start(){
+  await load();
+  if(!Array.isArray(state.off) || state.off.length!==MARKETS.length) state.off = MARKETS.map(()=>false);
+  applyTheme(); buildDial(); buildSettings(); tick(true);
+  setInterval(tick, 1000);
+})();
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
