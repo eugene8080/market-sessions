@@ -12,6 +12,16 @@ import Toybox.Lang;
 //! Midday breaks are not modelled — Tokyo, Hong Kong and Shanghai each shut for lunch and are
 //! drawn here as trading straight through.
 //!
+//! **Europe is one band here and five markets everywhere else.** London, Frankfurt, Zurich, Paris
+//! and Amsterdam open and close at the same instant to the second, all year: London trades an hour
+//! earlier by its own clock and sits an hour behind CET, and the UK and EU move their clocks
+//! together, so the two differences cancel exactly. In a browser they are worth listing separately
+//! because their wall clocks differ; on a dial they would be five arcs drawn on top of each other.
+//! The band is kept in CET, which four of the five actually use.
+//!
+//! Toronto, New York and NASDAQ coincide in the same way, and are deliberately *not* merged: three
+//! separate American venues are worth seeing as three.
+//!
 //! The data is held as flat arrays rather than as an array of objects. A glance runs under a hard
 //! 64 KB ceiling on this device, and fourteen small objects with four fields each cost far more in
 //! headers than fifty-six raw numbers do.
@@ -36,11 +46,7 @@ module Markets {
         "Hong Kong",
         "Shanghai",
         "Mumbai",
-        "Frankfurt",
-        "London",
-        "Zurich",
-        "Paris",
-        "Amsterdam",
+        "Europe",
         "Toronto",
         "New York",
         "NASDAQ"
@@ -64,11 +70,7 @@ module Markets {
         "SEHK",      // Stock Exchange of Hong Kong
         "SEHKNTL",   // Shanghai A-shares, over Stock Connect northbound
         "NSE",       // National Stock Exchange of India
-        "IBIS",      // Xetra
-        "LSE",       // London Stock Exchange
-        "EBS",       // SIX Swiss Exchange
-        "SBF",       // Euronext Paris
-        "AEB",       // Euronext Amsterdam
+        "EUR",       // LSE, IBIS, EBS, SBF and AEB — one session, see below
         "TSE",       // Toronto Stock Exchange
         "NYSE",      // New York Stock Exchange
         "NASDAQ"     // Nasdaq
@@ -88,11 +90,7 @@ module Markets {
              480,   Zones.RULE_NONE,    9 * 60 + 30,  16 * 60,        // Hong Kong    HKT
              480,   Zones.RULE_NONE,    9 * 60 + 30,  15 * 60,        // Shanghai     CST
              330,   Zones.RULE_NONE,    9 * 60 + 15,  15 * 60 + 30,   // Mumbai       IST
-              60,   Zones.RULE_EU,      9 * 60,       17 * 60 + 30,   // Frankfurt    CET/CEST
-               0,   Zones.RULE_EU,      8 * 60,       16 * 60 + 30,   // London       GMT/BST
-              60,   Zones.RULE_EU,      9 * 60,       17 * 60 + 30,   // Zurich       CET/CEST
-              60,   Zones.RULE_EU,      9 * 60,       17 * 60 + 30,   // Paris        CET/CEST
-              60,   Zones.RULE_EU,      9 * 60,       17 * 60 + 30,   // Amsterdam    CET/CEST
+              60,   Zones.RULE_EU,      9 * 60,       17 * 60 + 30,   // Europe       CET/CEST
             -300,   Zones.RULE_US,      9 * 60 + 30,  16 * 60,        // Toronto      EST/EDT
             -300,   Zones.RULE_US,      9 * 60 + 30,  16 * 60,        // New York     EST/EDT
             -300,   Zones.RULE_US,      9 * 60 + 30,  16 * 60         // NASDAQ       EST/EDT

@@ -221,12 +221,58 @@ def check_session_instants() -> list[str]:
     return failures
 
 
+#: The markets the Garmin dial draws as a single "Europe" band, and the CET representative it
+#: uses for them. The merge is only sound if all five open and close at the very same instant,
+#: which is the claim `check_european_band` exists to test rather than assume.
+EUROPEAN_BAND = ["London", "Frankfurt", "Zurich", "Paris", "Amsterdam"]
+EUROPEAN_REPRESENTATIVE = "Frankfurt"
+
+
+def check_european_band() -> list[str]:
+    """London, Frankfurt, Zurich, Paris and Amsterdam must coincide to the second, always.
+
+    London trades an hour earlier by its own clock and sits an hour behind CET, and the UK and EU
+    move their clocks at the same instant, so the two differences cancel. If either ever stopped
+    being true — a UK/EU divergence on daylight saving, say — the merged band would quietly show
+    the wrong hours for four of the five, and this is what would catch it.
+    """
+    failures = []
+    by_name = {m[0]: m for m in MARKETS}
+    day = datetime(FROM_YEAR, 1, 1)
+    last = datetime(TO_YEAR, 1, 1)
+    checked = 0
+
+    while day < last:
+        if day.weekday() < 5:
+            reference = None
+            for name in EUROPEAN_BAND:
+                _, _, std, rule, open_hm, close_hm = by_name[name]
+                window = (
+                    local_to_utc(std, rule, day.year, day.month, day.day, *open_hm),
+                    local_to_utc(std, rule, day.year, day.month, day.day, *close_hm),
+                )
+                if reference is None:
+                    reference = window
+                elif window != reference:
+                    failures.append(
+                        f"{day:%Y-%m-%d}: {name} trades {window}, "
+                        f"{EUROPEAN_BAND[0]} trades {reference}")
+                checked += 1
+        day += timedelta(days=1)
+
+    if not failures:
+        print(f"  ok  {checked} European sessions coincide to the second across {len(EUROPEAN_BAND)} markets")
+    return failures
+
+
 def main() -> int:
     print(f"Checking {FROM_YEAR}-01-01 to {TO_YEAR}-01-01\n")
     print("offsetAt():")
     failures = check_offsets()
     print("\nlocalToUtc():")
     failures += check_session_instants()
+    print("\nEuropean band merge:")
+    failures += check_european_band()
 
     if failures:
         print(f"\nFAILED: {len(failures)} problem(s)")

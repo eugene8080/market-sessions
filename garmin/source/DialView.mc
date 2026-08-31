@@ -34,7 +34,12 @@ class DialView extends WatchUi.View {
     //! innermost markets — which happen to be the American ones, not the ones anyone would choose
     //! to lose. Narrowing the stack keeps every market visible and clears a disc to write in.
     private const BAND_WIDTH = 4.6;
-    private const CARTOUCHE_RADIUS = 70.0;  //! the summary disc, inside the innermost band
+    //! The summary disc, sitting inside the innermost band. Its size is a direct trade against
+    //! band spacing — every unit of radius here is a unit the stack cannot use — and it is set by
+    //! the narrowest thing written in it: the bottom row, furthest from the centre and so on the
+    //! shortest chord, which has to hold a countdown like "12h 05m" without falling back to a
+    //! coarser one.
+    private const CARTOUCHE_RADIUS = 76.0;
     private const CARTOUCHE_CLEARANCE = 4.0;
 
     //! Spacing between bands is not a constant: it is solved in `onLayout` from however many

@@ -201,56 +201,58 @@ module ZonesTest {
     //! own bell, and must never report a weekend session.
     (:test)
     function sessionsOpenAndCloseOnTime(logger as Logger) as Boolean {
-        // 2026-09-01 is a Tuesday. London trades 08:00-16:30 BST, so 07:00 UTC to 15:30 UTC that
-        // day. The index is looked up rather than written down: inserting a market ahead of London
-        // in the table would otherwise leave this test quietly checking a different exchange.
-        var london = indexOf("London");
-        if (london == -1) {
-            logger.error("London is missing from the market table");
+        // 2026-09-01 is a Tuesday. The European band trades 09:00-17:30 CEST, so 07:00 UTC to
+        // 15:30 UTC that day — which is also exactly when London trades it at 08:00-16:30 BST,
+        // the coincidence the merged band rests on. The index is looked up rather than written
+        // down: inserting a market ahead of it would otherwise leave this test quietly checking a
+        // different exchange, as it did when Taipei was added.
+        var europe = indexOf("Europe");
+        if (europe == -1) {
+            logger.error("Europe is missing from the market table");
             return false;
         }
 
-        var londonOpens = 1788246000;    // 2026-09-01 07:00 UTC
-        var londonCloses = 1788276600;   // 2026-09-01 15:30 UTC
+        var europeOpens = 1788246000;    // 2026-09-01 07:00 UTC
+        var europeCloses = 1788276600;   // 2026-09-01 15:30 UTC
 
-        var justBefore = Sessions.stateOf(london, londonOpens - 60);
-        var justAfter = Sessions.stateOf(london, londonOpens + 60);
-        var afterClose = Sessions.stateOf(london, londonCloses + 60);
+        var justBefore = Sessions.stateOf(europe, europeOpens - 60);
+        var justAfter = Sessions.stateOf(europe, europeOpens + 60);
+        var afterClose = Sessions.stateOf(europe, europeCloses + 60);
 
         if (justBefore[Sessions.STATE_IS_OPEN] != 0) {
-            logger.error("London reported open a minute before the bell");
+            logger.error("Europe reported open a minute before the bell");
             return false;
         }
-        if (justBefore[Sessions.STATE_TRANSITION] != londonOpens) {
-            logger.error(Lang.format("London next open = $1$, expected $2$",
-                [justBefore[Sessions.STATE_TRANSITION], londonOpens]));
+        if (justBefore[Sessions.STATE_TRANSITION] != europeOpens) {
+            logger.error(Lang.format("Europe next open = $1$, expected $2$",
+                [justBefore[Sessions.STATE_TRANSITION], europeOpens]));
             return false;
         }
         if (justAfter[Sessions.STATE_IS_OPEN] != 1) {
-            logger.error("London reported closed a minute after the bell");
+            logger.error("Europe reported closed a minute after the bell");
             return false;
         }
-        if (justAfter[Sessions.STATE_TRANSITION] != londonCloses) {
-            logger.error(Lang.format("London close = $1$, expected $2$",
-                [justAfter[Sessions.STATE_TRANSITION], londonCloses]));
+        if (justAfter[Sessions.STATE_TRANSITION] != europeCloses) {
+            logger.error(Lang.format("Europe close = $1$, expected $2$",
+                [justAfter[Sessions.STATE_TRANSITION], europeCloses]));
             return false;
         }
         if (afterClose[Sessions.STATE_IS_OPEN] != 0) {
-            logger.error("London reported open after the close");
+            logger.error("Europe reported open after the close");
             return false;
         }
 
         // The next session after Friday's close must be Monday's open, never Saturday's.
         var saturday = 1788631200;       // 2026-09-05 18:00 UTC, a Saturday
-        var weekend = Sessions.stateOf(london, saturday);
+        var weekend = Sessions.stateOf(europe, saturday);
         if (weekend[Sessions.STATE_IS_OPEN] != 0) {
-            logger.error("London reported open at the weekend");
+            logger.error("Europe reported open at the weekend");
             return false;
         }
 
-        var opensOn = Zones.utcToCivil(0, Zones.RULE_EU, weekend[Sessions.STATE_TRANSITION]);
+        var opensOn = Zones.utcToCivil(60, Zones.RULE_EU, weekend[Sessions.STATE_TRANSITION]);
         if (opensOn[6] == Zones.SATURDAY || opensOn[6] == Zones.SUNDAY) {
-            logger.error(Lang.format("next London session falls on weekday $1$", [opensOn[6]]));
+            logger.error(Lang.format("next European session falls on weekday $1$", [opensOn[6]]));
             return false;
         }
         return true;

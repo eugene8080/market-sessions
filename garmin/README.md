@@ -7,8 +7,13 @@ backed by a full screen 24 hour dial, for the **tactix 8**.
 
 - **Glance** — one strip in the glance carousel: how many markets are trading, which one moves next
   and when, and a 24 hour timeline of the local day with the open sessions filled in.
-- **Dial** — open the glance and you get the same dial the web app draws: one band per exchange,
+- **Dial** — open the glance and you get the same dial the web app draws: one band per session,
   green while it trades and grey while it waits, on a face where one revolution is one day.
+
+Short labels are **Interactive Brokers' venue codes** — `ASX`, `TSEJ`, `SEHK`, `IBIS`, `NYSE` — so a
+band is named the way the exchange column of an IBKR watchlist names it. They were checked against
+IBKR's contract database, not written from memory; several are not what you would guess (Xetra is
+`IBIS`, Zurich is `EBS`, Paris is `SBF`), and `TSE` is Toronto while `TSEJ` is Tokyo.
 
 ## Devices
 
@@ -94,15 +99,33 @@ never loaded in glance mode.
 
 ## Where this differs from the web app
 
-The dial is a port, not a copy, and two things changed on purpose:
+The dial is a port, not a copy, and four things changed on purpose:
 
 - **No minute or second hand.** On a face where one revolution is a day, they sweep a scale they do
   not belong to. A single now marker replaces all three.
 - **A tighter band stack.** The web app runs its bands down to a radius of 36 and sweeps hands over
   them. On a watch that leaves nowhere legible for the summary, so the stack is narrowed to clear a
   disc in the middle — showing the open count, the next market, and its countdown — without hiding
-  any of the fourteen markets.
+  any market. Spacing is solved from the market count in `onLayout`, so adding one tightens the
+  stack rather than burying the innermost band under the disc.
+- **Europe is a single band.** London, Frankfurt, Zurich, Paris and Amsterdam open and close at the
+  same instant to the second, all year — London trades an hour earlier by its own clock and sits an
+  hour behind CET, and the UK and EU move their clocks together. In a browser they are worth listing
+  separately because their wall clocks differ; on a dial they would be five arcs drawn on top of one
+  another, so the watch draws one band labelled `EUR`. `tools/verify_zones.py` proves the
+  coincidence rather than assuming it. Toronto, New York and NASDAQ coincide the same way and are
+  deliberately left as three.
+- **The open count counts sessions, not exchanges.** A consequence of the above: with Europe merged,
+  a moment that would once have read "7 open" reads "3 open".
 
 Adding or changing a market means editing `Markets.mc` here and `MARKETS` in `index.html`, and
 `Markets.kt` on Android. The zone's rule family has to be picked by hand in the Garmin table; add
 the zone to `tools/verify_zones.py` at the same time and the checker will confirm you picked right.
+
+The tables are not identical by design: the web app and the Android widget list all fifteen markets
+by city, because their clock lists show London and Frankfurt an hour apart and that is real
+information. Only the dial merges Europe, and only because it has to fit its rings into 80 pixels of
+radius.
+
+There are **no app settings** — no per-market toggles, nothing in Garmin Connect. Every band always
+draws.
