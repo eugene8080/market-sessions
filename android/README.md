@@ -53,6 +53,29 @@ provider owns, so adding more widgets does not add more wakeups.
 The dp minimums follow Android's `70 × cells − 30` cell formula, so each entry lands on whole
 cells in a standard launcher grid.
 
+## Alerts
+
+Optional notifications a settable number of minutes before and after each bell. Open the app and
+tick **Notify me about sessions**, then choose:
+
+- **Minutes before** and **minutes after** — either can be zero to turn that side off; both zero
+  schedules nothing at all.
+- **Opens** and **closes** — which bells count.
+- **The markets** — nothing is selected to begin with, deliberately. All fourteen markets on both
+  bells at both offsets would be over fifty notifications a day.
+
+One alarm is outstanding at a time: the next alert due across every chosen market. When it fires,
+everything owed since the last check is posted and the following alarm is set. That alarm is
+`RTC_WAKEUP` — being told fifteen minutes before the open is worthless if it waits for the phone
+to wake on its own — unlike the widget's tick, which deliberately does not wake the device.
+
+A watermark records how far alerts have been consumed, so a late alarm still posts and never posts
+twice. Anything more than thirty minutes stale is dropped: a phone that was off overnight should
+not wake to a queue of bells it already missed.
+
+Alerts need the notification permission (Android 13 and above asks on first enable) and the same
+exact alarm permission the widget uses; without the latter they still arrive, just minutes late.
+
 ## Why the app asks for exact alarms
 
 The hands move once a minute, so the widget has to redraw once a minute. `ACTION_TIME_TICK`

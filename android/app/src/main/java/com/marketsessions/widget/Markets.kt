@@ -38,6 +38,10 @@ val MARKETS: List<Market> = listOf(
 
 data class Session(val start: Instant, val end: Instant)
 
+enum class Transition { OPEN, CLOSE }
+
+data class MarketTransition(val at: Instant, val kind: Transition, val session: Session)
+
 data class MarketState(
     val market: Market,
     val current: Session?,
@@ -54,28 +58,46 @@ data class MarketState(
 
 object Sessions {
 
-    /** Weekends are treated as closed; public holidays are not modelled, same as the web app. */
-    fun stateOf(market: Market, now: Instant): MarketState {
+    /**
+     * Every regular session in a window around now, two days back and nine forward. Weekends are
+     * treated as closed; public holidays are not modelled, same as the web app.
+     */
+    fun sessionsAround(market: Market, now: Instant): List<Session> {
         val zone = ZoneId.of(market.zone)
         val today = now.atZone(zone).toLocalDate()
-        var current: Session? = null
-        var next: Session? = null
+        val sessions = ArrayList<Session>()
 
         for (offset in -2L..9L) {
             val date = today.plusDays(offset)
             if (date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY) continue
 
-            val start = date.atTime(market.open).atZone(zone).toInstant()
-            val end = date.atTime(market.close).atZone(zone).toInstant()
-
-            if (!now.isBefore(start) && now.isBefore(end)) {
-                current = Session(start, end)
-            } else if (start.isAfter(now) && next == null) {
-                next = Session(start, end)
-            }
+            sessions += Session(
+                date.atTime(market.open).atZone(zone).toInstant(),
+                date.atTime(market.close).atZone(zone).toInstant(),
+            )
         }
-        return MarketState(market, current, next)
+        return sessions
     }
+
+    fun stateOf(market: Market, now: Instant): MarketState {
+        val sessions = sessionsAround(market, now)
+        return MarketState(
+            market,
+            sessions.firstOrNull { !now.isBefore(it.start) && now.isBefore(it.end) },
+            sessions.firstOrNull { it.start.isAfter(now) },
+        )
+    }
+
+    /** The opens and closes in that window, in order: the moments alerts hang off. */
+    fun transitions(market: Market, now: Instant): List<MarketTransition> =
+        sessionsAround(market, now)
+            .flatMap {
+                listOf(
+                    MarketTransition(it.start, Transition.OPEN, it),
+                    MarketTransition(it.end, Transition.CLOSE, it),
+                )
+            }
+            .sortedBy { it.at }
 
     fun all(now: Instant): List<MarketState> = MARKETS.map { stateOf(it, now) }
 
