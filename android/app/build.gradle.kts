@@ -31,6 +31,24 @@ android {
 
     sourceSets["main"].assets.srcDir(webAppAssets)
 
+    /**
+     * A debug APK is signed with whatever throwaway key the build machine happens to have, and
+     * Android refuses to replace an installed app whose signature differs. Signing with a stored
+     * key instead means every build installs over the last one. Without the environment — a local
+     * checkout, or a fork with no secret — this falls through to the usual debug key.
+     */
+    signingConfigs {
+        getByName("debug") {
+            val keystorePath = System.getenv("SIGNING_KEYSTORE_FILE")
+            if (!keystorePath.isNullOrBlank() && file(keystorePath).exists()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("SIGNING_KEYSTORE_PASSWORD")
+                keyAlias = "market-sessions"
+                keyPassword = System.getenv("SIGNING_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false

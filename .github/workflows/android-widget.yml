@@ -27,11 +27,39 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      # Without this the APK is signed with the runner's throwaway debug key, which differs
+      # between machines, and Android will not install it over a copy signed by another one.
+      - name: Restore the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/market-sessions.jks"
+            echo "SIGNING_KEYSTORE_FILE=$RUNNER_TEMP/market-sessions.jks" >> "$GITHUB_ENV"
+            echo "Signing with the stored key."
+          else
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret set. Signing with the runner's"
+            echo "::warning::throwaway debug key; this APK may refuse to install over an older one."
+          fi
+
       - name: Build the debug APK
         working-directory: android
+        env:
+          SIGNING_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
+
+      # Print the signer so the log says which key actually signed it.
+      - name: Report the signing certificate
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk \
+              | grep -i "SHA-256" || true
+          else
+            echo "apksigner not found on this runner; skipping."
+          fi
 
       - name: Name the APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk market-sessions-widget.apk
