@@ -31,6 +31,7 @@ module Markets {
     var NAMES as Array<String> = [
         "Sydney",
         "Tokyo",
+        "Taipei",
         "Singapore",
         "Hong Kong",
         "Shanghai",
@@ -45,22 +46,32 @@ module Markets {
         "NASDAQ"
     ] as Array<String>;
 
-    //! Three or four letter codes, for anywhere the full name will not fit.
+    //! Short codes, for anywhere the full name will not fit.
+    //!
+    //! These are Interactive Brokers' venue codes, not city or IATA codes, because IBKR is where
+    //! these markets are actually traded from — a code that matches the exchange column of a
+    //! watchlist needs no translating. They are IBKR's own spellings, oddities included: Xetra is
+    //! IBIS after the system Deutsche Boerse retired in 1997, Zurich is EBS, Paris is SBF, and
+    //! Shanghai A-shares are reached over Stock Connect so they carry the northbound link's code
+    //! rather than the exchange's.
+    //!
+    //! Watch the two Toronto/Tokyo lookalikes: TSE is Toronto and TSEJ is Tokyo.
     var CODES as Array<String> = [
-        "SYD",
-        "TYO",
-        "SGX",
-        "HKG",
-        "SHA",
-        "BSE",
-        "FRA",
-        "LON",
-        "SWX",
-        "PAR",
-        "AMS",
-        "TSX",
-        "NYSE",
-        "NDQ"
+        "ASX",       // Australian Securities Exchange
+        "TSEJ",      // Tokyo Stock Exchange
+        "TWSE",      // Taiwan Stock Exchange
+        "SGX",       // Singapore Exchange
+        "SEHK",      // Stock Exchange of Hong Kong
+        "SEHKNTL",   // Shanghai A-shares, over Stock Connect northbound
+        "NSE",       // National Stock Exchange of India
+        "IBIS",      // Xetra
+        "LSE",       // London Stock Exchange
+        "EBS",       // SIX Swiss Exchange
+        "SBF",       // Euronext Paris
+        "AEB",       // Euronext Amsterdam
+        "TSE",       // Toronto Stock Exchange
+        "NYSE",      // New York Stock Exchange
+        "NASDAQ"     // Nasdaq
     ] as Array<String>;
 
     //! Four numbers per market, in NAMES order:
@@ -72,6 +83,7 @@ module Markets {
         //  offset  rule                open          close
              600,   Zones.RULE_AU,     10 * 60,       16 * 60,        // Sydney       AEST/AEDT
              540,   Zones.RULE_NONE,    9 * 60,       15 * 60 + 30,   // Tokyo        JST
+             480,   Zones.RULE_NONE,    9 * 60,       13 * 60 + 30,   // Taipei       CST (no DST)
              480,   Zones.RULE_NONE,    9 * 60,       17 * 60,        // Singapore    SGT
              480,   Zones.RULE_NONE,    9 * 60 + 30,  16 * 60,        // Hong Kong    HKT
              480,   Zones.RULE_NONE,    9 * 60 + 30,  15 * 60,        // Shanghai     CST

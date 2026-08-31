@@ -30,13 +30,17 @@ class DialView extends WatchUi.View {
 
     //! The band stack is tighter than the web app's 7.2 wide, 9.0 apart. In the browser the bands
     //! run all the way down to a radius of 36 and the hands sweep over them; on a watch that
-    //! leaves nowhere legible for the summary, and covering the centre with it would hide the four
-    //! innermost markets — Amsterdam, Toronto, New York and NASDAQ, which are not the four anyone
-    //! would choose to lose. Narrowing the stack keeps all fourteen visible and clears a disc in
-    //! the middle to write in.
+    //! leaves nowhere legible for the summary, and covering the centre with it would hide the
+    //! innermost markets — which happen to be the American ones, not the ones anyone would choose
+    //! to lose. Narrowing the stack keeps every market visible and clears a disc to write in.
     private const BAND_WIDTH = 4.6;
-    private const BAND_STEP = 6.0;
     private const CARTOUCHE_RADIUS = 70.0;  //! the summary disc, inside the innermost band
+    private const CARTOUCHE_CLEARANCE = 4.0;
+
+    //! Spacing between bands is not a constant: it is solved in `onLayout` from however many
+    //! markets the table holds, so that the innermost band always lands just outside the summary
+    //! disc. Adding a market tightens the stack instead of burying it.
+    private var _bandStep as Float = 6.0;
 
     //! A 24 hour dial has no use for a minute or second hand: the whole face is one revolution per
     //! day, so the hour hand alone says where in the day you are, and the other two would sweep a
@@ -98,6 +102,13 @@ class DialView extends WatchUi.View {
         _centerX = dc.getWidth() / 2;
         _centerY = dc.getHeight() / 2;
         _hourLabelStep = size >= 400 ? 3 : 6;
+
+        // Fit the stack between the outermost edge and the summary disc. Both radii below are of
+        // the band's centre line, which is half a band width inside its own edge.
+        var outermost = BAND_OUTER - BAND_WIDTH / 2.0;
+        var innermost = CARTOUCHE_RADIUS + CARTOUCHE_CLEARANCE + BAND_WIDTH / 2.0;
+        var gaps = Markets.count() - 1;
+        _bandStep = gaps > 0 ? (outermost - innermost) / gaps : 0.0;
 
         if (size >= 400) {
             _statusFont = Graphics.FONT_MEDIUM;
@@ -180,7 +191,7 @@ class DialView extends WatchUi.View {
 
             // Bands stack inwards, each one step narrower in radius than the last, and the band's
             // centre line sits half a band width inside its nominal outer edge.
-            var radius = BAND_OUTER - i * BAND_STEP - BAND_WIDTH / 2.0;
+            var radius = BAND_OUTER - i * _bandStep - BAND_WIDTH / 2.0;
 
             dc.setColor(isOpen ? Palette.OPEN : Palette.CLOSED, Graphics.COLOR_TRANSPARENT);
             drawSessionArc(dc, radius, start, end);
@@ -285,7 +296,8 @@ class DialView extends WatchUi.View {
         dc.drawText(_centerX, y, _detailFont,
             fit(dc, _detailFont, chordAt(radius, y, y + rowHeight), [
                 Sessions.formatGap(nextAt - now),
-                Sessions.formatGapCompact(nextAt - now)
+                Sessions.formatGapCompact(nextAt - now),
+                Sessions.formatGapHours(nextAt - now)
             ] as Array<String>),
             Graphics.TEXT_JUSTIFY_CENTER);
     }

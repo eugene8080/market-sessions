@@ -137,6 +137,18 @@ module Sessions {
         return formatGapWith(seconds, "");
     }
 
+    //! The gap rounded down to whole hours — "60h" — for the narrowest row on the dial. Only ever
+    //! reached when neither fuller form fits, which in practice means a Friday evening looking at
+    //! Monday's open: a two digit hour count and a code beside it is more than a circle this size
+    //! can hold. Under an hour it stays in minutes, where the precision actually matters.
+    function formatGapHours(seconds as Number) as String {
+        var minutes = seconds / 60;
+        if (minutes < 60) {
+            return formatGapWith(seconds, " ");
+        }
+        return Lang.format("$1$h", [minutes / 60]);
+    }
+
     //! Shared body of the two formatters above. Monkey C has no `private` at module scope, so the
     //! separation here is by convention: callers want `formatGap` or `formatGapCompact`.
     function formatGapWith(seconds as Number, separator as String) as String {

@@ -28,6 +28,7 @@ private fun at(hour: Int, minute: Int) = LocalTime.of(hour, minute)
 val MARKETS: List<Market> = listOf(
     Market("Sydney", "Australia/Sydney", at(10, 0), at(16, 0)),
     Market("Tokyo", "Asia/Tokyo", at(9, 0), at(15, 30)),
+    Market("Taipei", "Asia/Taipei", at(9, 0), at(13, 30)),
     Market("Singapore", "Asia/Singapore", at(9, 0), at(17, 0)),
     Market("Hong Kong", "Asia/Hong_Kong", at(9, 30), at(16, 0)),
     Market("Shanghai", "Asia/Shanghai", at(9, 30), at(15, 0)),

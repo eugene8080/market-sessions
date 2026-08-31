@@ -161,18 +161,61 @@ module ZonesTest {
         return true;
     }
 
+    //! Position of a market in the table, or -1 if it is not there.
+    function indexOf(name as String) as Number {
+        for (var i = 0; i < Markets.count(); i += 1) {
+            if (Markets.NAMES[i].equals(name)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    //! Every market's code must be present and distinct — the glance and the dial both fall back
+    //! to them, and two markets sharing one would be indistinguishable on the watch.
+    (:test)
+    function marketCodesAreUsable(logger as Logger) as Boolean {
+        if (Markets.CODES.size() != Markets.count() || Markets.NAMES.size() != Markets.count()) {
+            logger.error(Lang.format("table lengths disagree: $1$ names, $2$ codes, $3$ specs",
+                [Markets.NAMES.size(), Markets.CODES.size(), Markets.SPEC.size() / Markets.STRIDE]));
+            return false;
+        }
+
+        for (var i = 0; i < Markets.count(); i += 1) {
+            if (Markets.CODES[i].length() == 0) {
+                logger.error(Lang.format("$1$ has no code", [Markets.NAMES[i]]));
+                return false;
+            }
+            for (var j = i + 1; j < Markets.count(); j += 1) {
+                if (Markets.CODES[i].equals(Markets.CODES[j])) {
+                    logger.error(Lang.format("$1$ and $2$ share the code $3$",
+                        [Markets.NAMES[i], Markets.NAMES[j], Markets.CODES[i]]));
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     //! A market's session must land on the right side of "open" at instants either side of its
     //! own bell, and must never report a weekend session.
     (:test)
     function sessionsOpenAndCloseOnTime(logger as Logger) as Boolean {
-        // 2026-09-01 is a Tuesday. London (index 7) trades 08:00-16:30 BST, so 07:00 UTC to
-        // 15:30 UTC that day.
+        // 2026-09-01 is a Tuesday. London trades 08:00-16:30 BST, so 07:00 UTC to 15:30 UTC that
+        // day. The index is looked up rather than written down: inserting a market ahead of London
+        // in the table would otherwise leave this test quietly checking a different exchange.
+        var london = indexOf("London");
+        if (london == -1) {
+            logger.error("London is missing from the market table");
+            return false;
+        }
+
         var londonOpens = 1788246000;    // 2026-09-01 07:00 UTC
         var londonCloses = 1788276600;   // 2026-09-01 15:30 UTC
 
-        var justBefore = Sessions.stateOf(7, londonOpens - 60);
-        var justAfter = Sessions.stateOf(7, londonOpens + 60);
-        var afterClose = Sessions.stateOf(7, londonCloses + 60);
+        var justBefore = Sessions.stateOf(london, londonOpens - 60);
+        var justAfter = Sessions.stateOf(london, londonOpens + 60);
+        var afterClose = Sessions.stateOf(london, londonCloses + 60);
 
         if (justBefore[Sessions.STATE_IS_OPEN] != 0) {
             logger.error("London reported open a minute before the bell");
@@ -199,7 +242,7 @@ module ZonesTest {
 
         // The next session after Friday's close must be Monday's open, never Saturday's.
         var saturday = 1788631200;       // 2026-09-05 18:00 UTC, a Saturday
-        var weekend = Sessions.stateOf(7, saturday);
+        var weekend = Sessions.stateOf(london, saturday);
         if (weekend[Sessions.STATE_IS_OPEN] != 0) {
             logger.error("London reported open at the weekend");
             return false;

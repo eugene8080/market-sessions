@@ -152,7 +152,9 @@ class MarketSessionsGlanceView extends WatchUi.GlanceView {
             Lang.format("$1$ $2$ in $3$", [Markets.NAMES[nextIndex], verb, gap]),
             Lang.format("$1$ $2$ $3$", [Markets.NAMES[nextIndex], verb, gap]),
             Lang.format("$1$ $2$ $3$", [Markets.CODES[nextIndex], verb, gap]),
-            Lang.format("$1$ $2$", [Markets.CODES[nextIndex], gap])
+            Lang.format("$1$ $2$", [Markets.CODES[nextIndex], gap]),
+            Lang.format("$1$ $2$", [Markets.CODES[nextIndex],
+                Sessions.formatGapHours(nextAt - now)])
         ] as Array<String>;
     }
 
