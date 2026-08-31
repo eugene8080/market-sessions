@@ -83,7 +83,7 @@ object Sessions {
     fun nextTransition(states: List<MarketState>): Instant? =
         states.mapNotNull { it.transitionAt() }.minOrNull()
 
-    fun statusLine(states: List<MarketState>, now: Instant): String {
+    fun statusLine(states: List<MarketState>, now: Instant, short: Boolean = false): String {
         val openCount = states.count { it.isOpen }
         val head = if (openCount > 0) "$openCount open" else "All closed"
 
@@ -93,7 +93,9 @@ object Sessions {
 
         val (state, at) = soonest
         val verb = if (state.isOpen) "closes" else "opens"
-        return "$head · ${state.market.name} $verb in ${shortDuration(Duration.between(now, at))}"
+        val gap = shortDuration(Duration.between(now, at))
+        return if (short) "$head · ${state.market.name} $verb $gap"
+        else "$head · ${state.market.name} $verb in $gap"
     }
 
     fun shortDuration(d: Duration): String {

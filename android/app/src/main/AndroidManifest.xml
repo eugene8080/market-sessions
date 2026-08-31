@@ -21,7 +21,8 @@
 
         <receiver
             android:name=".MarketWidgetProvider"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/widget_label_large">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.marketsessions.widget.TICK" />
@@ -33,6 +34,32 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/market_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".MarketWidgetProviderMedium"
+            android:exported="true"
+            android:label="@string/widget_label_medium">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/market_widget_info_medium" />
+        </receiver>
+
+        <receiver
+            android:name=".MarketWidgetProviderSmall"
+            android:exported="true"
+            android:label="@string/widget_label_small">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/market_widget_info_small" />
         </receiver>
     </application>
 </manifest>

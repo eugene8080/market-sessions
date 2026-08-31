@@ -18,8 +18,8 @@ Android Studio is desktop only, but you never have to open it. GitHub Actions bu
 3. Download `market-sessions-widget.apk` on your phone and open it to install. Android will ask
    you to allow installing unknown apps from your browser; that prompt is expected for a
    sideloaded build.
-4. Open **Market Sessions**, tap **Add the widget to my home screen**, and grant exact alarms if
-   the app asks.
+4. Open **Market Sessions**, tap the button for the size you want, and grant exact alarms if the
+   app asks.
 
 The workflow also runs automatically on any push to `main` that touches `android/`.
 
@@ -35,6 +35,23 @@ cd android
 
 The APK is signed with the standard debug key. That is fine for sideloading onto your own phone;
 it cannot be published to Play without a real signing key.
+
+## Sizes
+
+Three entries appear in the launcher's widget picker, because the picker lists providers rather
+than sizes. Each drops decoration rather than shrinking it, so the smaller ones stay legible:
+
+| Picker entry | Cells | What it draws |
+| --- | --- | --- |
+| Market Sessions 3×3 | 3×3, min 180dp | The full dial: hour ring, grid, band labels, hands, digital clock and status line |
+| Market Sessions 2×2 | 2×2, min 110dp | Hour ring at six hour intervals, no grid, no band labels, hands, one short status line |
+| Market Sessions 1×1 | 1×1, min 40dp | Bands and hands only, zoomed into the space the hour ring would have taken |
+
+All three stay resizable after placing, and all three are redrawn by the one alarm the 3×3
+provider owns, so adding more widgets does not add more wakeups.
+
+The dp minimums follow Android's `70 × cells − 30` cell formula, so each entry lands on whole
+cells in a standard launcher grid.
 
 ## Why the app asks for exact alarms
 
@@ -71,10 +88,10 @@ carried over; the widget always draws the dark palette, which reads better over 
 app/src/main/java/com/marketsessions/widget/
   Config.kt                 constants worth changing
   Markets.kt                the exchange table, session maths, status line     (pure JVM, no Android)
-  DialRenderer.kt           the dial, drawn to a Bitmap on a 400 unit grid
-  MarketWidgetProvider.kt   the AppWidgetProvider, sizes and pushes RemoteViews
+  DialRenderer.kt           the dial, drawn to a Bitmap on a 400 unit grid, at three detail levels
+  MarketWidgetProvider.kt   the three providers, one per picker size, and the RemoteViews they push
   WidgetScheduler.kt        the once a minute redraw alarm
-  MainActivity.kt           add the widget, grant alarms, open the web app
+  MainActivity.kt           add a widget of any size, grant alarms, open the web app
 ```
 
 `Markets.kt` deliberately has no Android imports, so the session logic can be compiled and

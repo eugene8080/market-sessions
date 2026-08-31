@@ -30,7 +30,9 @@ class MainActivity : Activity() {
         exactAlarmsButton = findViewById(R.id.btn_exact_alarms)
         exactAlarmsNote = findViewById(R.id.txt_exact_alarms)
 
-        findViewById<Button>(R.id.btn_add_widget).setOnClickListener { addWidget() }
+        findViewById<Button>(R.id.btn_add_large).setOnClickListener { addWidget(WidgetKind.LARGE) }
+        findViewById<Button>(R.id.btn_add_medium).setOnClickListener { addWidget(WidgetKind.MEDIUM) }
+        findViewById<Button>(R.id.btn_add_small).setOnClickListener { addWidget(WidgetKind.SMALL) }
         findViewById<Button>(R.id.btn_open_web).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.WEB_APP_URL)))
         }
@@ -56,9 +58,9 @@ class MainActivity : Activity() {
         MarketWidgetProvider.redrawAll(this)
     }
 
-    private fun addWidget() {
+    private fun addWidget(kind: WidgetKind) {
         val manager = getSystemService(AppWidgetManager::class.java)
-        val provider = ComponentName(this, MarketWidgetProvider::class.java)
+        val provider = ComponentName(this, kind.provider)
         if (manager != null && manager.isRequestPinAppWidgetSupported) {
             manager.requestPinAppWidget(provider, null, null)
         } else {
