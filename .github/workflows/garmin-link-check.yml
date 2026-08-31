@@ -1,0 +1,40 @@
+# Temporary: confirm the download links before someone follows them on a borrowed computer.
+# Removed again once the answer is in hand.
+name: Garmin link check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/garmin-link-check.yml'
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check every link worth sending
+        run: |
+          check() {
+            code=$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 25 "$1" 2>/dev/null || echo ERR)
+            printf '%-6s %s\n' "$code" "$1"
+          }
+          echo "--- human pages ---"
+          check https://developer.garmin.com/connect-iq/sdk/
+          check https://developer.garmin.com/connect-iq/overview/
+          check https://developer.garmin.com/connect-iq/programmers-guide/
+          check https://apps.garmin.com/developer
+          check https://apps.garmin.com/en-US/developer/dashboard
+
+          echo
+          echo "--- sdk manager, per platform ---"
+          B=https://developer.garmin.com/downloads/connect-iq/sdk-manager
+          for f in connectiq-sdk-manager-linux.zip \
+                   connectiq-sdk-manager-windows.zip \
+                   connectiq-sdk-manager-win.zip \
+                   connectiq-sdk-manager-macos.zip \
+                   connectiq-sdk-manager-mac.zip \
+                   connectiq-sdk-manager-mac.dmg \
+                   connectiq-sdk-manager-macos.dmg
+          do
+            check "$B/$f"
+          done
