@@ -60,6 +60,9 @@ class MainActivity : Activity() {
         findViewById<Button>(R.id.btn_add_large).setOnClickListener { addWidget(WidgetKind.LARGE) }
         findViewById<Button>(R.id.btn_add_medium).setOnClickListener { addWidget(WidgetKind.MEDIUM) }
         findViewById<Button>(R.id.btn_add_small).setOnClickListener { addWidget(WidgetKind.SMALL) }
+        findViewById<Button>(R.id.btn_open_sessions).setOnClickListener {
+            startActivity(Intent(this, SessionsActivity::class.java))
+        }
         findViewById<Button>(R.id.btn_open_web).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.WEB_APP_URL)))
         }

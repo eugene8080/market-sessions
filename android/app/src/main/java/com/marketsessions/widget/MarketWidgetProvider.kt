@@ -6,7 +6,6 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.RemoteViews
 import java.time.Instant
@@ -98,7 +97,7 @@ open class MarketWidgetProvider : AppWidgetProvider() {
             if (kind.hasStatusLine) {
                 views.setTextViewText(R.id.status, Sessions.statusLine(states, now, short = kind != WidgetKind.LARGE))
             }
-            views.setOnClickPendingIntent(R.id.root, openWebApp(context))
+            views.setOnClickPendingIntent(R.id.root, openSessions(context))
 
             manager.updateAppWidget(id, views)
         }
@@ -123,8 +122,10 @@ open class MarketWidgetProvider : AppWidgetProvider() {
             return (sideDp * density).toInt().coerceIn(kind.style.minBitmap, 512)
         }
 
-        private fun openWebApp(context: Context): PendingIntent {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(Config.WEB_APP_URL))
+        /** Tapping opens the sessions screen inside this app, not a hosted page in some browser. */
+        private fun openSessions(context: Context): PendingIntent {
+            val intent = Intent(context, SessionsActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             return PendingIntent.getActivity(
                 context,
                 0,

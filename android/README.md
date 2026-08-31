@@ -2,7 +2,12 @@
 
 A native widget that draws the same 24 hour dial as the web app: one band per exchange, green
 while it is trading, grey for the session coming up, with hour and minute hands over the top.
-Tapping it opens the web app.
+
+It is an app as well as a widget. The app's main screen is the sessions view itself — the same
+page the web app serves, copied into the APK at build time and run from there, so it needs no
+network and no browser. Tapping the widget or one of its notifications opens that screen; the
+hosted page stays available behind an explicit "open in a browser" button in the settings screen,
+reached from the overflow menu.
 
 The trading hours and the session logic are a direct port of the `MARKETS` table in
 `../index.html`. Hours are written in each exchange's own local time and converted with
@@ -119,8 +124,16 @@ app/src/main/java/com/marketsessions/widget/
   DialRenderer.kt           the dial, drawn to a Bitmap on a 400 unit grid, at three detail levels
   MarketWidgetProvider.kt   the three providers, one per picker size, and the RemoteViews they push
   WidgetScheduler.kt        the once a minute redraw alarm
-  MainActivity.kt           add a widget of any size, grant alarms, open the web app
+  SessionsActivity.kt       the sessions view, a WebView over the page held in assets
+  MainActivity.kt           settings: add a widget of any size, grant permissions, tune alerts
+  Alerts.kt                 what to be notified about and when                    (pure JVM, no Android)
+  AlertScheduler.kt         the alert alarm and the notifications it posts
+  AlertStore.kt             alert settings and the fired-up-to watermark
+  AlertReceiver.kt          the alarm, boot and clock change entry point
 ```
 
-`Markets.kt` deliberately has no Android imports, so the session logic can be compiled and
-exercised on a plain JVM.
+`Markets.kt` and `Alerts.kt` deliberately have no Android imports, so the session logic and the
+whole alert schedule can be compiled and exercised on a plain JVM.
+
+`index.html` and its icons are copied from the repository root into the app's assets by a Gradle
+task, so the page in the app cannot drift from the page on Pages. Edit the one at the root.

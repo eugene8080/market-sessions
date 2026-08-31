@@ -8,7 +8,6 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import java.time.Instant
 
 /**
@@ -66,7 +65,7 @@ object AlertScheduler {
             .setWhen(alert.at.toEpochMilli())
             .setShowWhen(true)
             .setAutoCancel(true)
-            .setContentIntent(openWebApp(context))
+            .setContentIntent(openSessions(context))
             .build()
         manager.notify(alert.id(), notification)
     }
@@ -93,10 +92,11 @@ object AlertScheduler {
         )
     }
 
-    private fun openWebApp(context: Context): PendingIntent =
+    private fun openSessions(context: Context): PendingIntent =
         PendingIntent.getActivity(
             context, 0,
-            Intent(Intent.ACTION_VIEW, Uri.parse(Config.WEB_APP_URL)),
+            Intent(context, SessionsActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 }

@@ -18,7 +18,11 @@
     <string name="sizes_note">All three sizes stay resizable once placed, and they also appear in your launcher\'s own widget picker.</string>
     <string name="exact_alarms_explainer">Android is not letting this app schedule exact alarms, so the dial hands may lag by a few minutes. The digital time keeps ticking either way.</string>
     <string name="exact_alarms_button">Allow exact alarms</string>
-    <string name="open_web_app">Open the web app</string>
+    <string name="open_web_app">Open the hosted page in a browser</string>
+    <string name="settings_title">Widget and alerts</string>
+    <string name="open_sessions">Open the sessions view</string>
+    <string name="intro_local">The sessions view runs inside this app, from a copy of the page held in the app itself, so it works with no network.</string>
+
     <string name="alerts_heading">Alerts</string>
     <string name="alerts_enable">Notify me about sessions</string>
     <string name="alerts_before">Minutes before the bell</string>
