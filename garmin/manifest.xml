@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!--
+    Market Sessions for Connect IQ.
+
+    The product list is the tactix 8 family. Garmin ships the tactix line under the equivalent
+    fenix part numbers — the tactix 8 47mm and 51mm are `fenix847mm`, and the tactix 8 Solar 51mm
+    is `fenix8solar51mm` — so those two ids cover every tactix 8, and the fenix 8 and quatix 8 that
+    share their hardware come along for free.
+
+    minSdkVersion is 3.1.0, the level that introduced AppBase.getGlanceView(). Both targets are far
+    above it; the floor is stated at the feature that actually constrains the app rather than at the
+    device, so adding an older watch later needs no change here.
+-->
+<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
+    <iq:application entry="MarketSessionsApp" id="631387c8a3f0405881cc5f46292137f6" launcherIcon="@Drawables.LauncherIcon" minSdkVersion="3.1.0" name="@Strings.AppName" type="watch-app" version="1.0.0">
+        <iq:products>
+            <iq:product id="fenix847mm"/>
+            <iq:product id="fenix8solar51mm"/>
+        </iq:products>
+        <!-- The app reads the clock and nothing else: no position, no sensors, no network. -->
+        <iq:permissions/>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+        <iq:barrels/>
+    </iq:application>
+</iq:manifest>

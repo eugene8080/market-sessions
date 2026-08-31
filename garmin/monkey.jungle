@@ -1,0 +1,7 @@
+project.manifest = manifest.xml
+
+# Nothing else is needed here. Strings live in `resources`, which every device picks up, and the
+# launcher icon lives in `resources-fenix847mm` and `resources-fenix8solar51mm`, which the
+# compiler adds to each device's resource path by convention. The two copies hold the same drawing
+# at each panel's own icon size — 65x65 and 40x40 — so the vector is rasterised at the right size
+# instead of a bitmap being scaled into place.
