@@ -69,16 +69,37 @@ jobs:
             echo
           done
 
-      - name: Can the SDK manager fetch device targets without a GUI?
+      - name: Where does the SDK manager get device files from?
         run: |
           curl -sSL --max-time 300 \
             https://developer.garmin.com/downloads/connect-iq/sdk-manager/connectiq-sdk-manager-linux.zip \
             -o mgr.zip || { echo "download failed"; exit 0; }
           mkdir -p mgr && unzip -q mgr.zip -d mgr || { echo "unzip failed"; exit 0; }
           chmod -R +x mgr/bin 2>/dev/null || true
-          echo "--- what it is ---"
-          file mgr/bin/sdkmanager
-          echo "--- share tree ---"
-          find mgr/share -maxdepth 3 | head -20
-          echo "--- does it take arguments? ---"
-          timeout 25 mgr/bin/sdkmanager --help 2>&1 | head -20 || echo "(no help, exit $?)"
+
+          echo "--- every garmin url baked into the binary ---"
+          strings mgr/bin/sdkmanager | grep -oE 'https?://[a-zA-Z0-9./_-]*' | sort -u | head -40
+
+          echo
+          echo "--- anything device or json shaped ---"
+          strings mgr/bin/sdkmanager | grep -iE '(device|\.json|/downloads/)' | grep -vE '^\s*$' | sort -u | head -40
+
+      - name: Try the obvious device index urls
+        run: |
+          for path in \
+            downloads/connect-iq/devices/devices.json \
+            downloads/connect-iq/sdks/devices.json \
+            downloads/connect-iq/devices.json \
+            downloads/connect-iq/device-index.json
+          do
+            url="https://developer.garmin.com/$path"
+            code=$(curl -sSL -o /tmp/probe.out -w '%{http_code}' --max-time 25 "$url" 2>/dev/null || echo ERR)
+            printf '%-6s %s\n' "$code" "$url"
+            if [ "$code" = "200" ]; then echo "      first 300 chars: $(head -c 300 /tmp/probe.out)"; fi
+          done
+
+      - name: Would the manager run at all with its missing library?
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libsecret-1-0 >/dev/null 2>&1 || true
+          echo "--- with libsecret present ---"
+          timeout 25 mgr/bin/sdkmanager --help 2>&1 | head -20 || echo "(exit $?)"
