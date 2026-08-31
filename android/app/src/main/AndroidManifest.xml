@@ -3,6 +3,16 @@
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!--
+        Without this declaration the "Alarms & reminders" toggle in system settings is greyed out,
+        so the minute tick can never be made exact. Apps targeting 34+ are not granted it on
+        install; the user turns it on, and the widget degrades gracefully until they do.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Runtime permission on Android 13 and above; without it alerts are computed but never seen. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -11,13 +21,19 @@
         android:theme="@android:style/Theme.Material">
 
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+            android:name=".SessionsActivity"
+            android:exported="true"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:label="@string/settings_title" />
 
         <receiver
             android:name=".MarketWidgetProvider"
@@ -60,6 +76,17 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/market_widget_info_small" />
+        </receiver>
+
+        <receiver
+            android:name=".AlertReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.marketsessions.widget.ALERT" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
         </receiver>
     </application>
 </manifest>

@@ -2,7 +2,12 @@
 
 A native widget that draws the same 24 hour dial as the web app: one band per exchange, green
 while it is trading, grey for the session coming up, with hour and minute hands over the top.
-Tapping it opens the web app.
+
+It is an app as well as a widget. The app's main screen is the sessions view itself — the same
+page the web app serves, copied into the APK at build time and run from there, so it needs no
+network and no browser. Tapping the widget or one of its notifications opens that screen; the
+hosted page stays available behind an explicit "open in a browser" button in the settings screen,
+reached from the overflow menu.
 
 The trading hours and the session logic are a direct port of the `MARKETS` table in
 `../index.html`. Hours are written in each exchange's own local time and converted with
@@ -53,6 +58,29 @@ provider owns, so adding more widgets does not add more wakeups.
 The dp minimums follow Android's `70 × cells − 30` cell formula, so each entry lands on whole
 cells in a standard launcher grid.
 
+## Alerts
+
+Optional notifications a settable number of minutes before and after each bell. Open the app and
+tick **Notify me about sessions**, then choose:
+
+- **Minutes before** and **minutes after** — either can be zero to turn that side off; both zero
+  schedules nothing at all.
+- **Opens** and **closes** — which bells count.
+- **The markets** — nothing is selected to begin with, deliberately. All fourteen markets on both
+  bells at both offsets would be over fifty notifications a day.
+
+One alarm is outstanding at a time: the next alert due across every chosen market. When it fires,
+everything owed since the last check is posted and the following alarm is set. That alarm is
+`RTC_WAKEUP` — being told fifteen minutes before the open is worthless if it waits for the phone
+to wake on its own — unlike the widget's tick, which deliberately does not wake the device.
+
+A watermark records how far alerts have been consumed, so a late alarm still posts and never posts
+twice. Anything more than thirty minutes stale is dropped: a phone that was off overnight should
+not wake to a queue of bells it already missed.
+
+Alerts need the notification permission (Android 13 and above asks on first enable) and the same
+exact alarm permission the widget uses; without the latter they still arrive, just minutes late.
+
 ## Why the app asks for exact alarms
 
 The hands move once a minute, so the widget has to redraw once a minute. `ACTION_TIME_TICK`
@@ -60,6 +88,11 @@ cannot be delivered to a manifest declared receiver, and Android 12 clamps inexa
 to ten minutes, so a self rescheduling exact alarm is the only way to keep a minute hand honest.
 The alarm is `RTC`, not `RTC_WAKEUP` — it never wakes the device, it just redraws at the next
 wake.
+
+The app declares `SCHEDULE_EXACT_ALARM`, which is what makes the **Alarms & reminders** toggle in
+system settings grantable at all — without the declaration that switch is greyed out. Apps
+targeting API 34 and above are not granted it on install, so it starts off and you turn it on,
+either from the button in the app or from Settings → Apps → Market Sessions → Alarms & reminders.
 
 Declining the permission is not fatal. The redraw then happens whenever Android gets round to the
 inexact alarm, plus every 30 minutes from `updatePeriodMillis`, and the digital time in the
@@ -91,8 +124,16 @@ app/src/main/java/com/marketsessions/widget/
   DialRenderer.kt           the dial, drawn to a Bitmap on a 400 unit grid, at three detail levels
   MarketWidgetProvider.kt   the three providers, one per picker size, and the RemoteViews they push
   WidgetScheduler.kt        the once a minute redraw alarm
-  MainActivity.kt           add a widget of any size, grant alarms, open the web app
+  SessionsActivity.kt       the sessions view, a WebView over the page held in assets
+  MainActivity.kt           settings: add a widget of any size, grant permissions, tune alerts
+  Alerts.kt                 what to be notified about and when                    (pure JVM, no Android)
+  AlertScheduler.kt         the alert alarm and the notifications it posts
+  AlertStore.kt             alert settings and the fired-up-to watermark
+  AlertReceiver.kt          the alarm, boot and clock change entry point
 ```
 
-`Markets.kt` deliberately has no Android imports, so the session logic can be compiled and
-exercised on a plain JVM.
+`Markets.kt` and `Alerts.kt` deliberately have no Android imports, so the session logic and the
+whole alert schedule can be compiled and exercised on a plain JVM.
+
+`index.html` and its icons are copied from the repository root into the app's assets by a Gradle
+task, so the page in the app cannot drift from the page on Pages. Edit the one at the root.

@@ -16,6 +16,10 @@ object Config {
      */
     fun displayZone(): ZoneId = ZoneId.systemDefault()
 
-    /** Tapping the widget opens this. */
+    /**
+     * The hosted copy, offered only behind an explicit "open in a browser" action. The widget and
+     * its notifications open [SessionsActivity] instead: this URL resolves through whichever app
+     * has claimed github.io links, which is not necessarily a browser.
+     */
     const val WEB_APP_URL = "https://eugene8080.github.io/market-sessions/"
 }
