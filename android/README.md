@@ -38,8 +38,20 @@ cd android
 ./gradlew installDebug         # straight onto an attached device
 ```
 
-The APK is signed with the standard debug key. That is fine for sideloading onto your own phone;
-it cannot be published to Play without a real signing key.
+## Signing
+
+The APK is signed with a key restored from the `ANDROID_KEYSTORE_BASE64` and
+`ANDROID_KEYSTORE_PASSWORD` repository secrets, under the alias `market-sessions`. That matters
+for more than tidiness: a debug APK is otherwise signed with whatever throwaway key the build
+machine has, those differ between machines, and Android refuses to install an APK over one signed
+by a different key — the update fails with "package conflicts with an existing package".
+
+Without the secrets — a local checkout, or a fork — the build falls back to the usual debug key
+and prints a warning. It still runs; its APKs just will not install over one signed by another
+key.
+
+The signing certificate is printed at the end of every build, so the log says which key was used.
+The key is self signed and fine for sideloading; publishing to Play would need its own.
 
 ## Sizes
 
