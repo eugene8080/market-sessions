@@ -1,0 +1,55 @@
+name: Build Android widget APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-widget.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-widget.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Build the debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk market-sessions-widget.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: market-sessions-widget-apk
+          path: market-sessions-widget.apk
+
+      # A rolling pre-release, so the APK can be downloaded and installed straight from a phone
+      # without unzipping an Actions artifact.
+      - name: Publish to the widget-latest release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete widget-latest --yes --cleanup-tag || true
+          gh release create widget-latest market-sessions-widget.apk \
+            --title "Market Sessions widget (latest)" \
+            --prerelease \
+            --notes "Debug build of the home screen widget, from ${{ github.sha }}. Download the APK on your phone and open it to install."
