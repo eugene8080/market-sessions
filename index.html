@@ -174,23 +174,31 @@ nav svg{width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:1.
 <script>
 /* ------------------------------------------------------------------
    Trading hours are written in each exchange's own local time, so DST
-   is handled automatically. Edit here to add or change a market.
+   is handled automatically. Edit here to add or change a market, and
+   mirror the change in android/…/Markets.kt, garmin/source/Markets.mc
+   and tools/verify_zones.py.
+
+   The convention is the exchange's regular cash session: first to last
+   continuous trade. Pre-open and post-close auctions are excluded, so
+   Sydney starts at 10:00 rather than at the 07:00 pre-open. Midday
+   breaks are not modelled — Tokyo, Hong Kong and Shanghai each shut for
+   lunch and are drawn here as trading straight through.
 ------------------------------------------------------------------ */
 const MARKETS = [
-  {n:'Sydney',    f:'🇦🇺', tz:'Australia/Sydney', o:[7,0],  c:[16,0]},
-  {n:'Tokyo',     f:'🇯🇵', tz:'Asia/Tokyo',       o:[9,0],  c:[18,0]},
+  {n:'Sydney',    f:'🇦🇺', tz:'Australia/Sydney', o:[10,0], c:[16,0]},
+  {n:'Tokyo',     f:'🇯🇵', tz:'Asia/Tokyo',       o:[9,0],  c:[15,30]},
   {n:'Singapore', f:'🇸🇬', tz:'Asia/Singapore',   o:[9,0],  c:[17,0]},
-  {n:'Hong Kong', f:'🇭🇰', tz:'Asia/Hong_Kong',   o:[9,30], c:[16,30]},
-  {n:'Shanghai',  f:'🇨🇳', tz:'Asia/Shanghai',    o:[9,30], c:[15,30]},
-  {n:'Mumbai',    f:'🇮🇳', tz:'Asia/Kolkata',     o:[9,15], c:[16,15]},
-  {n:'Frankfurt', f:'🇩🇪', tz:'Europe/Berlin',    o:[8,0],  c:[16,0]},
-  {n:'London',    f:'🇬🇧', tz:'Europe/London',    o:[8,0],  c:[17,0]},
-  {n:'Zurich',    f:'🇨🇭', tz:'Europe/Zurich',    o:[9,0],  c:[17,0]},
-  {n:'Paris',     f:'🇫🇷', tz:'Europe/Paris',     o:[9,0],  c:[17,0]},
-  {n:'Amsterdam', f:'🇳🇱', tz:'Europe/Amsterdam', o:[9,0],  c:[17,0]},
-  {n:'Toronto',   f:'🇨🇦', tz:'America/Toronto',  o:[9,30], c:[16,30]},
-  {n:'New York',  f:'🇺🇸', tz:'America/New_York', o:[8,0],  c:[17,0]},
-  {n:'NASDAQ',    f:'🇺🇸', tz:'America/New_York', o:[9,30], c:[16,30]}
+  {n:'Hong Kong', f:'🇭🇰', tz:'Asia/Hong_Kong',   o:[9,30], c:[16,0]},
+  {n:'Shanghai',  f:'🇨🇳', tz:'Asia/Shanghai',    o:[9,30], c:[15,0]},
+  {n:'Mumbai',    f:'🇮🇳', tz:'Asia/Kolkata',     o:[9,15], c:[15,30]},
+  {n:'Frankfurt', f:'🇩🇪', tz:'Europe/Berlin',    o:[9,0],  c:[17,30]},
+  {n:'London',    f:'🇬🇧', tz:'Europe/London',    o:[8,0],  c:[16,30]},
+  {n:'Zurich',    f:'🇨🇭', tz:'Europe/Zurich',    o:[9,0],  c:[17,30]},
+  {n:'Paris',     f:'🇫🇷', tz:'Europe/Paris',     o:[9,0],  c:[17,30]},
+  {n:'Amsterdam', f:'🇳🇱', tz:'Europe/Amsterdam', o:[9,0],  c:[17,30]},
+  {n:'Toronto',   f:'🇨🇦', tz:'America/Toronto',  o:[9,30], c:[16,0]},
+  {n:'New York',  f:'🇺🇸', tz:'America/New_York', o:[9,30], c:[16,0]},
+  {n:'NASDAQ',    f:'🇺🇸', tz:'America/New_York', o:[9,30], c:[16,0]}
 ];
 
 const state = {theme:'auto', tzMode:'utc', seconds:true, off:MARKETS.map(()=>false)};
