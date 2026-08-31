@@ -1,6 +1,10 @@
 # A throwaway reconnaissance run, not part of the build. This sandbox cannot reach Garmin at
 # all, so the only way to learn the real SDK layout and the fenix 8 / tactix 8 device
-# identifiers is to ask a runner that can. Nothing here fails the job: the point is the log.
+# identifiers is to ask a runner that can. Nothing here fails the job: the log is the finding.
+#
+# Run 1 established: developer.garmin.com, apps.garmin.com, sdks.json and the SDK manager zip
+# all answer 200, and the latest SDK is Connect IQ 9.2.0 (9 June 2026). It also showed that
+# sdks.json lists bare filenames rather than URLs, which is why this run builds the URL itself.
 name: Connect IQ SDK probe
 
 on:
@@ -18,52 +22,56 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Reachability
+      - name: Pick the newest SDK out of the index
         run: |
-          for url in \
-            https://developer.garmin.com \
-            https://apps.garmin.com \
-            https://developer.garmin.com/downloads/connect-iq/sdks/sdks.json \
-            https://developer.garmin.com/downloads/connect-iq/sdk-manager/connectiq-sdk-manager-linux.zip \
-            https://developer.garmin.com/downloads/connect-iq/sdks/connectiq-sdk-lin.zip
-          do
-            code=$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 25 "$url" 2>/dev/null || echo "ERR")
-            printf '%-6s %s\n' "$code" "$url"
-          done
+          BASE=https://developer.garmin.com/downloads/connect-iq/sdks
+          curl -sSL --max-time 30 "$BASE/sdks.json" -o sdks.json
+          VERSION=$(jq -r '.[-1].version' sdks.json)
+          FILE=$(jq -r '.[-1].linux' sdks.json)
+          RELEASED=$(jq -r '.[-1].release' sdks.json)
+          echo "latest: $VERSION, released $RELEASED"
+          echo "file:   $FILE"
+          echo "SDK_URL=$BASE/$FILE" >> "$GITHUB_ENV"
+          echo "SDK_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "--- does that URL exist? ---"
+          curl -sSLI -o /dev/null -w 'HTTP %{http_code}  %{size_download} bytes announced\n' \
+            --max-time 60 "$BASE/$FILE" || echo "HEAD failed"
 
-      - name: The SDK index, if there is one
+      - name: Download and unpack it
         run: |
-          curl -sSL --max-time 30 \
-            https://developer.garmin.com/downloads/connect-iq/sdks/sdks.json -o sdks.json 2>/dev/null || true
-          if [ -s sdks.json ]; then
-            echo "bytes: $(wc -c < sdks.json)"
-            echo "--- first 4000 characters ---"
-            head -c 4000 sdks.json; echo
-            echo "--- any linux sdk urls it mentions ---"
-            grep -oE 'https?://[^"]*(lin|linux)[^"]*' sdks.json | sort -u | head -20 || echo "none matched"
-          else
-            echo "nothing fetched: blocked, moved, or the index lives elsewhere"
-          fi
-
-      - name: Try to install an SDK and enumerate device targets
-        run: |
-          URL=$(grep -oE 'https?://[^"]*(lin|linux)[^"]*\.zip' sdks.json 2>/dev/null | sort -u | tail -1 || true)
-          if [ -z "$URL" ]; then
-            echo "no SDK zip URL discovered; stopping here, the index above is the finding"
-            exit 0
-          fi
-          echo "fetching $URL"
-          curl -sSL --max-time 300 "$URL" -o sdk.zip || { echo "download failed"; exit 0; }
+          echo "fetching $SDK_URL"
+          curl -sSL --max-time 600 "$SDK_URL" -o sdk.zip || { echo "download failed"; exit 0; }
           echo "zip bytes: $(stat -c%s sdk.zip)"
+          file sdk.zip
           mkdir -p sdk && unzip -q sdk.zip -d sdk || { echo "unzip failed"; exit 0; }
           echo "--- top level ---"
-          ls sdk | head -30
+          ls sdk
           echo "--- bin ---"
-          ls sdk/bin 2>/dev/null | head -30
-          echo "--- anything device shaped ---"
-          find sdk -maxdepth 3 -iname '*device*' | head -30
-          echo "--- compiler version ---"
-          chmod +x sdk/bin/* 2>/dev/null || true
+          ls sdk/bin 2>/dev/null | head -40
+
+      - name: Can it compile, and for which watches?
+        run: |
+          [ -d sdk/bin ] || { echo "no sdk/bin, nothing further to try"; exit 0; }
+          chmod -R +x sdk/bin 2>/dev/null || true
+          echo "--- monkeyc ---"
           sdk/bin/monkeyc --version 2>&1 | head -5 || echo "monkeyc would not run"
-          echo "--- do fenix 8 or tactix appear anywhere in the SDK? ---"
-          grep -rIl --include='*' -iE 'fenix8|fenix 8|tactix8|tactix 8' sdk 2>/dev/null | head -10 || echo "no direct hits"
+          echo
+          echo "--- device definitions inside the SDK? ---"
+          find sdk -maxdepth 4 -type d -iname '*device*' | head -20
+          find sdk -maxdepth 4 -iname 'devices*.xml' -o -maxdepth 4 -iname 'devices*.json' | head -20
+          echo
+          echo "--- fenix 8 / tactix 8 anywhere in the SDK ---"
+          grep -rIl -iE 'fenix8|tactix8' sdk 2>/dev/null | head -10 || true
+          echo
+          echo "--- every device id the compiler admits to knowing ---"
+          sdk/bin/monkeyc --device-list 2>&1 | head -40 || echo "(no --device-list option)"
+          ls "$HOME/.Garmin/ConnectIQ/Devices" 2>/dev/null | head -40 || echo "(no ~/.Garmin device store; targets come from the SDK manager)"
+
+      - name: What is in the SDK manager, if devices are not in the SDK
+        run: |
+          curl -sSL --max-time 300 \
+            https://developer.garmin.com/downloads/connect-iq/sdk-manager/connectiq-sdk-manager-linux.zip \
+            -o mgr.zip || { echo "download failed"; exit 0; }
+          echo "zip bytes: $(stat -c%s mgr.zip)"
+          mkdir -p mgr && unzip -q mgr.zip -d mgr || { echo "unzip failed"; exit 0; }
+          find mgr -maxdepth 2 | head -30
