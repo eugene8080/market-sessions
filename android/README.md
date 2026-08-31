@@ -61,6 +61,11 @@ to ten minutes, so a self rescheduling exact alarm is the only way to keep a min
 The alarm is `RTC`, not `RTC_WAKEUP` — it never wakes the device, it just redraws at the next
 wake.
 
+The app declares `SCHEDULE_EXACT_ALARM`, which is what makes the **Alarms & reminders** toggle in
+system settings grantable at all — without the declaration that switch is greyed out. Apps
+targeting API 34 and above are not granted it on install, so it starts off and you turn it on,
+either from the button in the app or from Settings → Apps → Market Sessions → Alarms & reminders.
+
 Declining the permission is not fatal. The redraw then happens whenever Android gets round to the
 inexact alarm, plus every 30 minutes from `updatePeriodMillis`, and the digital time in the
 widget is a `TextClock` that ticks by itself regardless.

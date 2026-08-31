@@ -56,6 +56,7 @@ class MainActivity : Activity() {
         exactAlarmsButton.visibility = visibility
         exactAlarmsNote.visibility = visibility
         MarketWidgetProvider.redrawAll(this)
+        WidgetScheduler.scheduleNext(this)
     }
 
     private fun addWidget(kind: WidgetKind) {
