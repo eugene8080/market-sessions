@@ -7,8 +7,14 @@ import java.time.ZoneId
  */
 object Config {
 
-    /** The dial and the session bands are drawn in this zone, matching the web app's GMT+0 default. */
-    val displayZone: ZoneId = ZoneId.of("UTC")
+    /**
+     * The zone the dial and the session bands are drawn in: the phone's own, so the widget agrees
+     * with the clock in the status bar. It is read on every redraw rather than cached, so a
+     * change of zone — travelling, or the twice yearly clock change — takes effect on the next
+     * tick. Return `ZoneId.of("UTC")` here to pin the dial to GMT+0 instead, matching the web
+     * app's default setting.
+     */
+    fun displayZone(): ZoneId = ZoneId.systemDefault()
 
     /** Tapping the widget opens this. */
     const val WEB_APP_URL = "https://eugene8080.github.io/market-sessions/"
