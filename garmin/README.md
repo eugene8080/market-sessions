@@ -83,6 +83,22 @@ Four rule families cover all fourteen markets:
 These are five years of current law, not physics. If a country changes its rules the watch needs a
 new build, where the phone gets the correction from the OS. Re-run the check to find out.
 
+## Links, checked
+
+| Link | Status |
+| --- | --- |
+| [SDK downloads, all platforms](https://developer.garmin.com/connect-iq/sdk/) | 200 |
+| [Connect IQ overview](https://developer.garmin.com/connect-iq/overview/) | 200 |
+| [SDK Manager, Windows](https://developer.garmin.com/downloads/connect-iq/sdk-manager/connectiq-sdk-manager-windows.zip) | 200 |
+| [SDK Manager, Linux](https://developer.garmin.com/downloads/connect-iq/sdk-manager/connectiq-sdk-manager-linux.zip) | 200 |
+| SDK Manager, macOS | no predictable direct url; take it from the SDK page |
+| [SDK version index](https://developer.garmin.com/downloads/connect-iq/sdks/sdks.json) | 200, lists every SDK and its per platform filename |
+| `apps.garmin.com/en-US/developer/dashboard` | 403 — the store dashboard exists but needs a signed in account |
+
+The device files the build needs land in `%APPDATA%\Garmin\ConnectIQ\Devices` on Windows, or
+`~/.Garmin/ConnectIQ/Devices` on macOS and Linux, once the SDK Manager has been signed in to and
+the fenix 8 and tactix 8 ticked in its Devices tab.
+
 ## Sketch of the app, when it happens
 
 A device app with a glance view, one build covering both watches. `Dc.drawArc` maps closely onto
