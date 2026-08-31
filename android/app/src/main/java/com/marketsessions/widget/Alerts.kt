@@ -65,10 +65,10 @@ object Alerts {
 
         val alerts = ArrayList<Alert>()
         MARKETS.filter { it.name in settings.markets }.forEach { market ->
-            Sessions.transitions(market, now).forEach { transition ->
+            Sessions.transitions(market, now).forEach transition@{ transition ->
                 val wanted =
                     if (transition.kind == Transition.OPEN) settings.onOpen else settings.onClose
-                if (!wanted) return@forEach
+                if (!wanted) return@transition
 
                 if (settings.beforeMinutes > 0) {
                     alerts += Alert(
