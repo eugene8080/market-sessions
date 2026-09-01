@@ -92,7 +92,8 @@ open class MarketWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, kind.layout)
             views.setImageViewBitmap(
                 R.id.dial,
-                DialRenderer(bitmapSide(context, manager, id, kind), kind.style).render(states, now),
+                DialRenderer(bitmapSide(context, manager, id, kind), kind.style, DialTheme.load(context))
+                    .render(states, now),
             )
             if (kind.hasStatusLine) {
                 views.setTextViewText(R.id.status, Sessions.statusLine(states, now, short = kind != WidgetKind.LARGE))

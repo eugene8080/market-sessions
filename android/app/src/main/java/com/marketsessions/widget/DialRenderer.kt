@@ -33,27 +33,26 @@ enum class DialStyle(
  * index.html: the same 400 unit design grid, the same geometry constants, the app's dark palette.
  * The minute ring labels and the second hand are dropped, both illegible at widget size.
  */
-class DialRenderer(private val size: Int, private val detail: DialStyle = DialStyle.FULL) {
-
-    private object Palette {
-        const val DIAL_BG = 0xFF151821.toInt()
-        const val RING = 0xFF3C4761.toInt()
-        const val RING_TEXT = 0xFFEEF1F8.toInt()
-        const val OPEN = 0xFF41C391.toInt()
-        const val CLOSED = 0xFF8F97B6.toInt()
-        const val HAND = 0xFFC3CBDF.toInt()
-        const val GRID = 0x17FFFFFF
-
-        /**
-         * Market names on the bands. White rather than the near-black this used to be: dark type
-         * measures better against a mid-tone band, but at this size it reads as a smudge, and the
-         * eye separates white lettering from a dark dial more readily than it resolves dark
-         * lettering from the band under it. Matches the web app, which the in-app screen renders.
-         */
-        const val BAND_TEXT = 0xFFFFFFFF.toInt()
-    }
+class DialRenderer(
+    private val size: Int,
+    private val detail: DialStyle = DialStyle.FULL,
+    private val theme: DialTheme = DialTheme(
+        ground = 0xFF070910.toInt(),
+        ring = 0xFF3A4866.toInt(),
+        ringText = 0xFFE9EEF8.toInt(),
+        closed = 0xFF8B95B1.toInt(),
+        hand = 0xFFC9D3E4.toInt(),
+        open = 0xFFE8503F.toInt(),
+    ),
+) {
 
     private companion object {
+        /** The grid is a wash of white over whatever ground the theme supplies, so it is not themed. */
+        const val GRID = 0x17FFFFFF
+
+        /** Market names on the bands: white on every theme, matching the web app. */
+        const val BAND_TEXT = 0xFFFFFFFF.toInt()
+
         const val CENTER = 200f
         const val BAND_OUTER = 157f
         const val BAND_WIDTH = 7.2f
@@ -67,7 +66,7 @@ class DialRenderer(private val size: Int, private val detail: DialStyle = DialSt
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
         textSize = detail.hourTextSize
-        color = Palette.RING_TEXT
+        color = theme.ringText
     }
 
     /**
@@ -82,7 +81,7 @@ class DialRenderer(private val size: Int, private val detail: DialStyle = DialSt
         typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
         textSize = 8.5f
         letterSpacing = 0.09f
-        color = Palette.BAND_TEXT
+        color = BAND_TEXT
     }
 
     fun render(states: List<MarketState>, now: Instant): Bitmap {
@@ -100,16 +99,16 @@ class DialRenderer(private val size: Int, private val detail: DialStyle = DialSt
 
     private fun face(canvas: Canvas) {
         if (detail.ring) {
-            fill.color = Palette.DIAL_BG
+            fill.color = theme.ground
             canvas.drawCircle(CENTER, CENTER, 188f, fill)
 
-            stroke.color = Palette.RING
+            stroke.color = theme.ring
             stroke.strokeWidth = 22f
             canvas.drawCircle(CENTER, CENTER, 177f, stroke)
         }
 
         if (detail.grid) {
-            stroke.color = Palette.GRID
+            stroke.color = GRID
             stroke.strokeWidth = 0.7f
             for (hour in 0 until 24) {
                 val degrees = hour / 24f * 360f
@@ -137,7 +136,7 @@ class DialRenderer(private val size: Int, private val detail: DialStyle = DialSt
         var to = degreesOf(window.end)
         if (to <= from) to += 360f
 
-        stroke.color = if (state.isOpen) Palette.OPEN else Palette.CLOSED
+        stroke.color = if (state.isOpen) theme.open else theme.closed
         stroke.strokeWidth = BAND_WIDTH
         stroke.strokeCap = Paint.Cap.BUTT
         canvas.drawArc(ovalAt(radius), from - 90f, to - from, false, stroke)
@@ -176,7 +175,7 @@ class DialRenderer(private val size: Int, private val detail: DialStyle = DialSt
     private fun hands(canvas: Canvas, now: Instant) {
         val minutes = minuteOfDay(now)
 
-        stroke.color = Palette.HAND
+        stroke.color = theme.hand
         stroke.strokeCap = Paint.Cap.ROUND
 
         stroke.strokeWidth = 5.5f
@@ -185,7 +184,7 @@ class DialRenderer(private val size: Int, private val detail: DialStyle = DialSt
         stroke.strokeWidth = 4f
         hand(canvas, minutes % 60f / 60f * 360f, 146f)
 
-        fill.color = Palette.HAND
+        fill.color = theme.hand
         canvas.drawCircle(CENTER, CENTER, 8f, fill)
     }
 

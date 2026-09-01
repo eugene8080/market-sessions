@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
 
 /**
@@ -33,10 +34,29 @@ class SessionsActivity : Activity() {
             settings.domStorageEnabled = true      // so the page can remember its settings
             settings.builtInZoomControls = false
             setBackgroundColor(0xFF101218.toInt()) // avoid a white flash before the page paints
+
+            // The page is the app's only settings screen, so the home screen widget has to hear
+            // about a theme change from it. Exposing an object to JavaScript is only safe because
+            // this page is an asset shipped inside the APK rather than anything fetched from the
+            // network — see ASSET_PAGE below.
+            addJavascriptInterface(ThemeBridge(this@SessionsActivity), "MarketSessionsHost")
         }
         setContentView(web)
 
         if (savedInstanceState == null) web.loadUrl(ASSET_PAGE)
+    }
+
+    /** What the page calls when the dial theme changes. */
+    private class ThemeBridge(private val context: android.content.Context) {
+
+        @JavascriptInterface
+        fun setDialTheme(ground: String, session: String) {
+            // Arrives on a WebView worker thread; both the store and the redraw are safe off the
+            // main thread, and doing it here keeps the page's own handler snappy.
+            if (DialTheme.save(context, ground, session)) {
+                MarketWidgetProvider.redrawAll(context)
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
