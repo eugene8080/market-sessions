@@ -27,7 +27,19 @@ class DialView extends WatchUi.View {
     private const GRID = 400.0;
     private const BAND_OUTER = 157.0;
     private const RING_RADIUS = 177.0;
-    private const RING_WIDTH = 22.0;
+
+    //! The ring is as wide as the numerals printed on it, plus a little air.
+    //!
+    //! It was 22 units, which was fine while the dial only counted in threes and the numerals
+    //! could hang over the edges without looking like a mistake. With every hour numbered they
+    //! have to sit *in* the band, so the band grew to fit them and the numerals shrank to meet
+    //! it — see `hourFontSize`. Ring spans 162 to 192 of a 200 unit half width, which still
+    //! leaves the panel edge clear.
+    private const RING_WIDTH = 30.0;
+
+    //! Numeral height as a fraction of the ring's width. Cap height is roughly 70% of the em, so
+    //! at 0.78 a two digit hour fills a little over half the band and is comfortably enclosed.
+    private const HOUR_FONT_FILL = 0.78;
 
     private const BAND_WIDTH = 6.0;
     private const CARTOUCHE_RADIUS = 76.0;
@@ -92,7 +104,9 @@ class DialView extends WatchUi.View {
     private var _hourLabelStep as Number = 3;
     private var _clearRadius as Number = 1;
     private var _detailFont as FontDefinition = Graphics.FONT_XTINY;
-    private var _hourFont as FontDefinition = Graphics.FONT_XTINY;
+    // Widened from FontDefinition because `hourFont` may hand back a VectorFont, which is a
+    // different branch of Graphics.FontType.
+    private var _hourFont as FontType = Graphics.FONT_XTINY;
 
     private var _ticker as Timer.Timer?;
 
@@ -152,9 +166,35 @@ class DialView extends WatchUi.View {
         _validUntil = -1;
 
         _detailFont = Graphics.FONT_XTINY;
-        _hourFont = Graphics.FONT_XTINY;
+        _hourFont = hourFont(px(RING_WIDTH));
 
         buildRamps();
+    }
+
+    //! A numeral sized to the ring rather than to whatever Garmin happens to ship.
+    //!
+    //! The system fonts are a fixed ladder and FONT_XTINY, the smallest rung, is 37 pixels tall on
+    //! the 454 panel — taller than the ring is wide, so the hours sat *across* the band instead of
+    //! in it. Vector fonts take a size in pixels, which is exactly the control this needs. Both
+    //! tactix 8 variants report `enhancedGraphicSupport`, but the check is done properly anyway:
+    //! a device without it falls back to the system font, which is merely the old look, not a
+    //! blank dial.
+    //!
+    //! Condensed rather than regular because these are two digit numbers repeated twenty four
+    //! times around a circle, and the narrower face buys separation between neighbours.
+    private function hourFont(ringPixels as Number) as FontDefinition {
+        if (!(Graphics has :getVectorFont)) {
+            return Graphics.FONT_XTINY;
+        }
+
+        var size = (ringPixels * HOUR_FONT_FILL).toNumber();
+        var font = Graphics.getVectorFont({
+            :face => ["RobotoCondensedRegular", "RobotoRegular"],
+            :size => size
+        });
+
+        // A face the device does not carry returns null rather than substituting one.
+        return font != null ? font : Graphics.FONT_XTINY;
     }
 
     //! The colour ramps, and the generation they came from.
@@ -283,16 +323,18 @@ class DialView extends WatchUi.View {
         }
 
         dc.setColor(Palette.RING_TEXT, Graphics.COLOR_TRANSPARENT);
-        var half = dc.getFontHeight(_hourFont) / 2;
 
+        // VCENTER rather than subtracting half the font height by hand. The two agree for a bitmap
+        // font, but a vector font's reported height is its em, not its ink, so the hand rolled
+        // version sat the numerals a couple of pixels proud of the middle of the band.
         for (var hour = _hourLabelStep; hour <= 24; hour += _hourLabelStep) {
             var degrees = hour / 24.0 * 360.0;
             dc.drawText(
                 polarX(RING_RADIUS, degrees),
-                polarY(RING_RADIUS, degrees) - half,
+                polarY(RING_RADIUS, degrees),
                 _hourFont,
                 hour.format("%02d"),
-                Graphics.TEXT_JUSTIFY_CENTER);
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
     }
 
