@@ -41,6 +41,9 @@ class DialView extends WatchUi.View {
     //! at 0.78 a two digit hour fills a little over half the band and is comfortably enclosed.
     private const HOUR_FONT_FILL = 0.78;
 
+    //! Height of the two summary lines, in design units.
+    private const READOUT_SIZE = 25.0;
+
     private const BAND_WIDTH = 6.0;
     private const CARTOUCHE_RADIUS = 76.0;
     private const CARTOUCHE_CLEARANCE = 4.0;
@@ -103,7 +106,7 @@ class DialView extends WatchUi.View {
 
     private var _hourLabelStep as Number = 3;
     private var _clearRadius as Number = 1;
-    private var _detailFont as FontDefinition = Graphics.FONT_XTINY;
+    private var _detailFont as FontType = Graphics.FONT_XTINY;
     // Widened from FontDefinition because `hourFont` may hand back a VectorFont, which is a
     // different branch of Graphics.FontType.
     private var _hourFont as FontType = Graphics.FONT_XTINY;
@@ -165,32 +168,38 @@ class DialView extends WatchUi.View {
         _isOpen = new Array<Number>[Markets.count()];
         _validUntil = -1;
 
-        _detailFont = Graphics.FONT_XTINY;
-        _hourFont = hourFont(px(RING_WIDTH));
+        // The readout takes a vector font for the same reason the numerals do, and for one more:
+        // at FONT_XTINY "SEHKNTL 55m" is about 200 pixels against a 134 pixel chord, so the widest
+        // codes fell all the way through `fit`'s candidates to a bare "55m" — a summary that says
+        // when something happens without saying what. A smaller font clears it with room to spare.
+        _detailFont = sizedFont(px(READOUT_SIZE));
+        _hourFont = sizedFont((px(RING_WIDTH) * HOUR_FONT_FILL).toNumber());
 
         buildRamps();
     }
 
-    //! A numeral sized to the ring rather than to whatever Garmin happens to ship.
+    //! Text at the size this face wants, rather than at whatever size Garmin happens to ship.
     //!
     //! The system fonts are a fixed ladder and FONT_XTINY, the smallest rung, is 37 pixels tall on
-    //! the 454 panel — taller than the ring is wide, so the hours sat *across* the band instead of
-    //! in it. Vector fonts take a size in pixels, which is exactly the control this needs. Both
-    //! tactix 8 variants report `enhancedGraphicSupport`, but the check is done properly anyway:
-    //! a device without it falls back to the system font, which is merely the old look, not a
-    //! blank dial.
+    //! the 454 panel. That is taller than the ring is wide, so the hours sat *across* the band
+    //! instead of in it, and wide enough that the longest summary line did not fit the disc at all.
+    //! Vector fonts take a size in pixels, which is exactly the control both wanted.
     //!
-    //! Condensed rather than regular because these are two digit numbers repeated twenty four
-    //! times around a circle, and the narrower face buys separation between neighbours.
-    private function hourFont(ringPixels as Number) as FontDefinition {
+    //! Condensed rather than regular: the numerals are two digit numbers repeated twenty four times
+    //! around a circle, and the summary has to hold a seven letter venue code and a duration on one
+    //! line. The narrower face buys both.
+    //!
+    //! Both tactix 8 variants report `enhancedGraphicSupport`, but the check is done properly
+    //! anyway — a device without it falls back to the system font, which is merely the old look,
+    //! not a blank dial.
+    private function sizedFont(pixels as Number) as FontType {
         if (!(Graphics has :getVectorFont)) {
             return Graphics.FONT_XTINY;
         }
 
-        var size = (ringPixels * HOUR_FONT_FILL).toNumber();
         var font = Graphics.getVectorFont({
             :face => ["RobotoCondensedRegular", "RobotoRegular"],
-            :size => size
+            :size => pixels
         });
 
         // A face the device does not carry returns null rather than substituting one.

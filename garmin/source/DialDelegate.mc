@@ -3,8 +3,8 @@ import Toybox.WatchUi;
 
 //! Input for the dial.
 //!
-//! The dial has nothing to drill into, so this exists to keep the hardware buttons doing what a
-//! tactix owner expects: BACK leaves the app, everything else is ignored rather than swallowed.
+//! BACK leaves the app, DOWN opens the market list, MENU opens the settings. Anything else is
+//! ignored rather than swallowed, so the hardware keeps doing what a tactix owner expects.
 class DialDelegate extends WatchUi.BehaviorDelegate {
 
     function initialize() {
@@ -15,6 +15,14 @@ class DialDelegate extends WatchUi.BehaviorDelegate {
     //! initial view is to exit the app.
     function onBack() as Boolean {
         return false;
+    }
+
+    //! DOWN, or a swipe up, opens the list of every market. The dial says what is happening now;
+    //! the list says when each session runs and how long until it changes. It cannot live in the
+    //! glance — a glance is one non-interactive draw, and the carousel owns up and down there.
+    function onNextPage() as Boolean {
+        WatchUi.pushView(new MarketList(), new MarketListDelegate(), WatchUi.SLIDE_UP);
+        return true;
     }
 
     //! MENU opens the settings menu — theme, and the colour a live session is drawn in. This is
