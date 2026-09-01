@@ -26,7 +26,19 @@ class MarketList extends WatchUi.CustomMenu {
 
     //! Row text height on the 400 unit design grid the rest of the app uses, so the list scales
     //! with the dial between the 454 pixel AMOLED and the 280 pixel Solar.
-    static const TEXT_SIZE = 22.0;
+    //!
+    //! This was 22 units, which measured 25 pixels on the AMOLED and was simply too small to read
+    //! on a watch — Garmin's own stock ticker sets its rows at about this size instead. Going
+    //! bigger cost the row its two column layout: measured on the panel, a line holding both the
+    //! session window and the countdown needs
+    //!
+    //!     "09:30-16:00" 150px + "closes 12h30m" 193px + a gap
+    //!
+    //! against 272 pixels of usable row, and no arrangement of those two fits above about size 28.
+    //! So the row grew a third line instead, which is also roughly the density the stock ticker
+    //! runs at — two and a half rows on screen rather than four.
+    static const TEXT_SIZE = 34.0;
+    static const LINES_PER_ROW = 3;
     static const GRID = 400.0;
 
     //! Built here rather than taken as a Dc, because a menu is constructed before it is shown and
@@ -49,11 +61,13 @@ class MarketList extends WatchUi.CustomMenu {
             }
         }
 
-        // Two lines of text plus a little air. Too short and the rows bleed into each other, which
-        // is exactly what happened when this was a round number picked by eye.
-        CustomMenu.initialize(line * 2 + line / 2, Palette.GROUND_CORE, {
+        // Three lines of text plus a little air. Too short and the rows bleed into each other,
+        // which is exactly what happened when this was a round number picked by eye.
+        // The title holds one line, so it is sized for one. At two it was stealing most of a row's
+        // worth of screen from a list that only fits two and a half.
+        CustomMenu.initialize(line * LINES_PER_ROW + line / 2, Palette.GROUND_CORE, {
             :title => new MarketListTitle(openCount),
-            :titleItemHeight => line * 2
+            :titleItemHeight => line + line / 2
         });
 
         for (var i = 0; i < Markets.count(); i += 1) {
@@ -131,8 +145,14 @@ class MarketListTitle extends WatchUi.Drawable {
 
 //! One market: its code and city, the session window, and how long until that window changes.
 //!
-//!     • SEHK              09:30-16:00
-//!       Hong Kong        closes 2h10m
+//!     • SEHK  Hong Kong
+//!       09:30-16:00
+//!       closes 2h10m
+//!
+//! Three lines, one fact each, because at a size worth reading on a watch no two of them fit side
+//! by side. Everything is left aligned to a single column so the eye runs straight down the codes,
+//! which is how you use a list of eleven markets; the countdown takes the session colour because it
+//! is the only line that changes while you are looking at it.
 //!
 //! The verb is on the row for the same reason it is on the dial: "SEHK 2h10m" does not say whether
 //! Hong Kong is two hours from opening or from closing. The dot before the code carries open or
@@ -140,8 +160,9 @@ class MarketListTitle extends WatchUi.Drawable {
 //! left edge would have been clearer still, but that is where the display rounds away and where
 //! CustomMenu puts its own scroll indicator.
 //!
-//! The city is the first thing dropped when the row is too narrow for everything else. The code and
-//! the timings are what the row exists for; the city is context.
+//! Nothing here needs to marquee. Measured on the 454 panel at this size, the widest line any
+//! market produces is "SEHKNTL  Shanghai" at 247 pixels against 272 of usable row. The city is
+//! still dropped rather than overrun if a longer name is ever added.
 class MarketRow extends WatchUi.CustomMenuItem {
 
     private var _code as String;
@@ -192,8 +213,6 @@ class MarketRow extends WatchUi.CustomMenuItem {
 
         var left = MarketList.inset(width);
         var right = width - left;
-        var top = height / 2 - line;
-        var bottom = height / 2;
 
         var accent = _isOpen ? Palette.OPEN : Palette.CLOSED;
         var dot = MarketList.scaled(4.0, width);
@@ -202,6 +221,9 @@ class MarketRow extends WatchUi.CustomMenuItem {
         // already cutting the row away. The text starts clear of it.
         var textLeft = left + dot * 3;
 
+        // Three lines, centred in the row.
+        var top = height / 2 - (line * MarketList.LINES_PER_ROW) / 2;
+
         // Open or shut, before any of the text.
         dc.setColor(accent, Graphics.COLOR_TRANSPARENT);
         dc.fillCircle(left + dot, top + line / 2, dot);
@@ -209,18 +231,18 @@ class MarketRow extends WatchUi.CustomMenuItem {
         dc.setColor(Palette.RING_TEXT, Graphics.COLOR_TRANSPARENT);
         dc.drawText(textLeft, top, font, _code, Graphics.TEXT_JUSTIFY_LEFT);
 
-        dc.setColor(Palette.DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(right, top, font, _window, Graphics.TEXT_JUSTIFY_RIGHT);
-
-        // The change is the answer, so it is measured first and the city takes what is left.
+        // The city follows the code on the same line, and is dropped rather than overrun.
         var gap = MarketList.scaled(10.0, width);
-        var room = right - textLeft - dc.getTextWidthInPixels(_change, font) - gap;
-        if (dc.getTextWidthInPixels(_city, font) <= room) {
-            dc.drawText(textLeft, bottom, font, _city, Graphics.TEXT_JUSTIFY_LEFT);
+        var cityLeft = textLeft + dc.getTextWidthInPixels(_code, font) + gap;
+
+        dc.setColor(Palette.DIM, Graphics.COLOR_TRANSPARENT);
+        if (cityLeft + dc.getTextWidthInPixels(_city, font) <= right) {
+            dc.drawText(cityLeft, top, font, _city, Graphics.TEXT_JUSTIFY_LEFT);
         }
+        dc.drawText(textLeft, top + line, font, _window, Graphics.TEXT_JUSTIFY_LEFT);
 
         dc.setColor(accent, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(right, bottom, font, _change, Graphics.TEXT_JUSTIFY_RIGHT);
+        dc.drawText(textLeft, top + line * 2, font, _change, Graphics.TEXT_JUSTIFY_LEFT);
     }
 }
 
