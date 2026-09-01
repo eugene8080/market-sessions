@@ -1,0 +1,11 @@
+<drawables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <!--
+        An SVG rather than a PNG, so one drawing serves every target: the tactix 8 AMOLED wants a
+        65x65 launcher icon and everything else here wants 40x40, and the compiler rasterises the
+        vector to whatever each device asks for.
+
+        The directories are named for the icon size rather than for a device, because five of the
+        six products want the same one. monkey.jungle maps each product to the size it asks for.
+    -->
+    <bitmap id="LauncherIcon" filename="launcher_icon.svg" dithering="none" />
+</drawables>

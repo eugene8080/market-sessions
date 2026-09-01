@@ -80,10 +80,20 @@ module Sessions {
             if (nowUtc >= start && nowUtc < end) {
                 currentStart = start;
                 currentEnd = end;
-            } else if (start > nowUtc && nextStart == NONE) {
-                // Days are walked in order, so the first future open found is the soonest.
+            } else if (start > nowUtc) {
+                // Days are walked in order, so the first future open found is the soonest — and
+                // it is also the point after which nothing can change. Every later day opens later
+                // still, so none of them can contain `now` either, which means `currentStart` is
+                // settled as well. Stop.
+                //
+                // This is what makes the window affordable. Sixteen days forward is sized for
+                // Lunar New Year, and walking all sixteen every time cost the Forerunner 255 its
+                // frame: eleven markets times eighteen days of daylight saving arithmetic tripped
+                // the watchdog on a processor slower than the one this was written on. The usual
+                // answer is one or two days away and now costs one or two days.
                 nextStart = start;
                 nextEnd = end;
+                break;
             }
         }
 
