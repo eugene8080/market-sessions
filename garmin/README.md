@@ -43,6 +43,24 @@ monkeyc -f monkey.jungle -d fenix847mm -o bin/MarketSessions.prg -y ~/.garmin-ke
 monkeydo bin/MarketSessions.prg fenix847mm
 ```
 
+## Sideloading
+
+Copy **one** `.prg` into `\GARMIN\APPS\` on the watch over USB. Nothing else goes on the device —
+there is no documented way to sideload settings, which is why the theme picker is also on the watch
+(open the app, press MENU).
+
+Name the output for the watch rather than for the device id, or the file that lands in the folder
+says `fenix8` and the person holding a tactix has to remember why:
+
+```sh
+monkeyc -f monkey.jungle -d fenix847mm      -o bin/store/MarketSessions-tactix8-AMOLED-47mm-and-51mm.prg -y <key> -r
+monkeyc -f monkey.jungle -d fenix8solar51mm -o bin/store/MarketSessions-tactix8-SOLAR-51mm.prg           -y <key> -r
+```
+
+**Size does not tell the two apart** — the tactix 8 and the tactix 8 Solar both come in 51mm. The
+screen does: AMOLED is glossy and vivid, Solar is matte with a solar ring around the display. On the
+watch, Settings → System → About names the model outright.
+
 The simulator starts a glance capable app **in glance mode**, which is what you want to see first.
 Press START on the glance to open the dial.
 
