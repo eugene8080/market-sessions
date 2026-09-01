@@ -224,24 +224,68 @@ const state = {theme:'auto', palette:'iron', session:'red', tzMode:'utc', second
    one colour on the dial that carries meaning rather than mood.
 ------------------------------------------------------------------ */
 const PALETTES = {
-  iron:   {'--dial-bg':'#070910', '--ring':'#3a4866', '--ring-text':'#e9eef8',
-           '--closed':'#8b95b1', '--hand':'#c9d3e4', '--tick':'#4a5573', '--hand-tip':'#ffb03a', '--second':'#e2574c'},
-  cobalt: {'--dial-bg':'#050a16', '--ring':'#1d4a80', '--ring-text':'#e6f0ff',
-           '--closed':'#5e86be', '--hand':'#d6e4f7', '--tick':'#2a5a8f', '--hand-tip':'#ffb03a', '--second':'#e2574c'},
-  ember:  {'--dial-bg':'#110503', '--ring':'#6a2010', '--ring-text':'#ffede4',
-           '--closed':'#a48c80', '--hand':'#f2e2d6', '--tick':'#6d4436', '--hand-tip':'#ffd98a', '--second':'#ef6a5e'}
+  iron:   {ground:'#070910', ringNight:'#2c3854', ringDay:'#495c82', ringText:'#e9eef8',
+           closedFrom:'#404a64', closedTo:'#8b95b1', hand:'#c9d3e4', handTip:'#ffb03a',
+           second:'#e2574c', tick:'#4a5573'},
+  cobalt: {ground:'#050a16', ringNight:'#123058', ringDay:'#255e9e', ringText:'#e6f0ff',
+           closedFrom:'#1f3c66', closedTo:'#5e86be', hand:'#d6e4f7', handTip:'#ffb03a',
+           second:'#e2574c', tick:'#2a5a8f'},
+  ember:  {ground:'#110503', ringNight:'#3e1109', ringDay:'#8c2a12', ringText:'#ffede4',
+           closedFrom:'#46302a', closedTo:'#a48c80', hand:'#f2e2d6', handTip:'#ffd98a',
+           second:'#ef6a5e', tick:'#6d4436'}
 };
 
-const SESSIONS = {red:'#e8503f', green:'#41c391', blue:'#3d93e8', purple:'#9463e6'};
+const SESSIONS = {
+  red:    {from:'#9e2318', to:'#ff6b58', flat:'#e8503f'},
+  green:  {from:'#1b7a56', to:'#63edb0', flat:'#41c391'},
+  blue:   {from:'#184f9b', to:'#69bcff', flat:'#3d93e8'},
+  purple: {from:'#54269b', to:'#c095ff', flat:'#9463e6'}
+};
+
+/* The live pair, read by the dial. */
+const paint = () => ({p: PALETTES[state.palette] || PALETTES.iron,
+                      s: SESSIONS[state.session] || SESSIONS.red});
+
+/* Channel-wise sRGB blend — the same shortcut Palette.mix takes on the watch. Interpolating
+   gamma-encoded values is not what a colour scientist would do, but over these short spans the
+   difference is invisible. */
+function mix(from, to, t){
+  t = Math.max(0, Math.min(1, t));
+  const ch = h => [1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+  const a = ch(from), b = ch(to);
+  return '#' + a.map((v,i)=>Math.round(v+(b[i]-v)*t).toString(16).padStart(2,'0')).join('');
+}
+
+/* SVG has no sweep gradient, so a fade that follows an arc is a run of short arcs with the colour
+   stepped between them — the same thing the watch does, for the same reason. A hair of overlap on
+   every segment but the last, or the joins show as hairlines. */
+const RING_STEPS = 30, BAND_STEPS = 8;
+function fadedArc(r, d0, d1, from, to, width, steps){
+  let out = '', step = (d1-d0)/steps;
+  for(let i=0;i<steps;i++){
+    const edge = i===steps-1 ? 0 : 0.5;
+    out += `<path d="${arc(r, d0+i*step, d0+(i+1)*step+edge)}" fill="none" stroke-width="${width}"
+             stroke="${mix(from, to, steps>1 ? i/(steps-1) : 0)}"/>`;
+  }
+  return out;
+}
 
 /* The dial's colours are set as inline custom properties rather than in a
    stylesheet block, so they layer cleanly over whichever of light or dark
    is in force without needing a rule for every combination. */
 function applyPalette(){
-  const root = document.documentElement;
-  const palette = PALETTES[state.palette] || PALETTES.iron;
-  for(const [name, value] of Object.entries(palette)) root.style.setProperty(name, value);
-  root.style.setProperty('--open', SESSIONS[state.session] || SESSIONS.red);
+  const {p, s} = paint(), root = document.documentElement;
+  root.style.setProperty('--dial-bg', p.ground);
+  root.style.setProperty('--ring', mix(p.ringNight, p.ringDay, .5));
+  root.style.setProperty('--ring-text', p.ringText);
+  root.style.setProperty('--closed', p.closedTo);
+  root.style.setProperty('--open', s.flat);
+  root.style.setProperty('--hand', p.hand);
+  root.style.setProperty('--hand-tip', p.handTip);
+  root.style.setProperty('--second', p.second);
+  root.style.setProperty('--tick', p.tick);
+  buildDial();                 // the ring is faded, so it is rebuilt rather than recoloured
+  if(cache) renderBands(cache);
   tellHost();
 }
 
@@ -323,8 +367,14 @@ function arc(r,d0,d1,rev){
   return `M${x0} ${y0} A${r} ${r} 0 ${d1-d0>180?1:0} 1 ${x1} ${y1}`;
 }
 function buildDial(){
-  let s = `<circle cx="200" cy="200" r="188" fill="var(--dial-bg)"/>
-  <circle cx="200" cy="200" r="177" fill="none" stroke="var(--ring)" stroke-width="22"/>`;
+  const {p} = paint();
+  let s = `<circle cx="200" cy="200" r="188" fill="${p.ground}"/>`;
+  for(let i=0;i<RING_STEPS;i++){
+    const from = i*360/RING_STEPS, sweep = 360/RING_STEPS;
+    const t = (1-Math.cos(from*Math.PI/180))/2;
+    s += `<path d="${arc(177, from-0.6, from+sweep+0.6)}" fill="none" stroke-width="22"
+           stroke="${mix(p.ringNight, p.ringDay, t)}"/>`;
+  }
   for(let h=1;h<=24;h++){const [x,y]=polar(177,h/24*360);
     s+=`<text class="hourlabel" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="central">${String(h).padStart(2,'0')}</text>`;}
   for(let t=5;t<=60;t+=5){const [x,y]=polar(150,t/60*360);
@@ -343,8 +393,10 @@ function renderBands(sess){
     const w = sess[i].cur || sess[i].next; if(!w) return;
     let d0 = minOfDay(w.s)/1440*360, d1 = minOfDay(w.e)/1440*360;
     if(d1<=d0) d1+=360;
-    const col = sess[i].cur ? 'var(--open)' : 'var(--closed)';
-    out += `<path d="${arc(r,d0,d1)}" stroke="${col}" stroke-width="${BAND}" fill="none"/>`;
+    const {p, s: sc} = paint();
+    const from = sess[i].cur ? sc.from : p.closedFrom;
+    const to   = sess[i].cur ? sc.to   : p.closedTo;
+    out += fadedArc(r, d0, d1, from, to, BAND, BAND_STEPS);
     /* Text laid along an arc reads upside down through the whole bottom half of the dial, not
        merely past the 6 o'clock mark, so the path is reversed for any label centred between 3 and
        9 o'clock. The old test of mid>180 flipped only half the range that needed it — which is why

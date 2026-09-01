@@ -38,11 +38,15 @@ class DialRenderer(
     private val detail: DialStyle = DialStyle.FULL,
     private val theme: DialTheme = DialTheme(
         ground = 0xFF070910.toInt(),
-        ring = 0xFF3A4866.toInt(),
+        ringNight = 0xFF2C3854.toInt(),
+        ringDay = 0xFF495C82.toInt(),
         ringText = 0xFFE9EEF8.toInt(),
-        closed = 0xFF8B95B1.toInt(),
+        closedFrom = 0xFF404A64.toInt(),
+        closedTo = 0xFF8B95B1.toInt(),
         hand = 0xFFC9D3E4.toInt(),
         accent = 0xFFFFB03A.toInt(),
+        openFrom = 0xFF9E2318.toInt(),
+        openTo = 0xFFFF6B58.toInt(),
         open = 0xFFE8503F.toInt(),
     ),
 ) {
@@ -63,6 +67,10 @@ class DialRenderer(
         const val HOUR_TIP = 96f
         const val HUB_RADIUS = 18f
         const val MINUTE_TIP = BAND_OUTER - 3 * BAND_STEP - BAND_WIDTH
+
+        /** Segment counts for the two fades, matching the watch. */
+        const val RING_STEPS = 30
+        const val BAND_STEPS = 8
     }
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -108,9 +116,17 @@ class DialRenderer(
             fill.color = theme.ground
             canvas.drawCircle(CENTER, CENTER, 188f, fill)
 
-            stroke.color = theme.ring
+            // Cool at midnight, warmer under the middle of the trading day. A hair of overlap on
+            // each segment, or the joins show as hairlines.
             stroke.strokeWidth = 22f
-            canvas.drawCircle(CENTER, CENTER, 177f, stroke)
+            stroke.strokeCap = Paint.Cap.BUTT
+            val sweep = 360f / RING_STEPS
+            for (step in 0 until RING_STEPS) {
+                val from = step * sweep
+                val t = (1f - Math.cos(Math.toRadians(from.toDouble())).toFloat()) / 2f
+                stroke.color = DialTheme.mix(theme.ringNight, theme.ringDay, t)
+                canvas.drawArc(ovalAt(177f), from - 90f - 0.6f, sweep + 1.2f, false, stroke)
+            }
         }
 
         if (detail.grid) {
@@ -142,10 +158,19 @@ class DialRenderer(
         var to = degreesOf(window.end)
         if (to <= from) to += 360f
 
-        stroke.color = if (state.isOpen) theme.open else theme.closed
+        // Each session travels from its own open to its own close, so a band carries a direction
+        // rather than sitting there as a flat stripe.
+        val tail = if (state.isOpen) theme.openFrom else theme.closedFrom
+        val head = if (state.isOpen) theme.openTo else theme.closedTo
+
         stroke.strokeWidth = BAND_WIDTH
         stroke.strokeCap = Paint.Cap.BUTT
-        canvas.drawArc(ovalAt(radius), from - 90f, to - from, false, stroke)
+        val step = (to - from) / BAND_STEPS
+        for (segment in 0 until BAND_STEPS) {
+            stroke.color = DialTheme.mix(tail, head, segment / (BAND_STEPS - 1f))
+            val edge = if (segment == BAND_STEPS - 1) 0f else 0.5f
+            canvas.drawArc(ovalAt(radius), from - 90f + segment * step, step + edge, false, stroke)
+        }
 
         if (detail.bandLabels) label(canvas, state.market.name.uppercase(), radius, from, to)
     }
