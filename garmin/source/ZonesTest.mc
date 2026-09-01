@@ -197,6 +197,126 @@ module ZonesTest {
         return true;
     }
 
+    //! A published holiday must actually close the market, and the next session must step over it.
+    //!
+    //! 3 July 2026 is the NYSE's observed Independence Day — the 4th falls on a Saturday — so the
+    //! market is shut on the Friday and does not trade again until Monday the 6th.
+    (:test)
+    function holidaysCloseTheMarket(logger as Logger) as Boolean {
+        var newYork = indexOf("New York");
+        if (newYork == -1) {
+            logger.error("New York is missing from the market table");
+            return false;
+        }
+
+        var duringThursday = 1783006200;   // 2026-07-02 12:00 New York, an ordinary session
+        var duringFriday = 1783094400;     // 2026-07-03 12:00 New York, Independence Day observed
+        var mondayOpens = 1783344600;      // 2026-07-06 09:30 New York
+
+        if (Sessions.stateOf(newYork, duringThursday)[Sessions.STATE_IS_OPEN] != 1) {
+            logger.error("New York reported shut on an ordinary Thursday");
+            return false;
+        }
+
+        var holiday = Sessions.stateOf(newYork, duringFriday);
+        if (holiday[Sessions.STATE_IS_OPEN] != 0) {
+            logger.error("New York reported open on Independence Day");
+            return false;
+        }
+        if (holiday[Sessions.STATE_TRANSITION] != mondayOpens) {
+            logger.error(Lang.format("next New York open = $1$, expected $2$ (Monday the 6th)",
+                [holiday[Sessions.STATE_TRANSITION], mondayOpens]));
+            return false;
+        }
+        return true;
+    }
+
+    //! The search window must outlast the longest closure any calendar contains, or the band finds
+    //! no next session and drops off the dial entirely.
+    //!
+    //! Taipei's Lunar New Year in 2026 is the worst case in the table: it trades on 11 February and
+    //! not again until the 23rd, twelve days later.
+    (:test)
+    function longClosuresStillFindTheNextSession(logger as Logger) as Boolean {
+        var taipei = indexOf("Taipei");
+        if (taipei == -1) {
+            logger.error("Taipei is missing from the market table");
+            return false;
+        }
+
+        var midClosure = 1771128000;    // 2026-02-15 12:00 Taipei, four days into the shutdown
+        var reopens = 1771808400;       // 2026-02-23 09:00 Taipei
+
+        var state = Sessions.stateOf(taipei, midClosure);
+        if (state[Sessions.STATE_IS_OPEN] != 0) {
+            logger.error("Taipei reported open during Lunar New Year");
+            return false;
+        }
+        if (state[Sessions.STATE_TRANSITION] == Sessions.NONE) {
+            logger.error("Taipei found no next session across a twelve day closure");
+            return false;
+        }
+        if (state[Sessions.STATE_TRANSITION] != reopens) {
+            logger.error(Lang.format("Taipei reopens at $1$, expected $2$",
+                [state[Sessions.STATE_TRANSITION], reopens]));
+            return false;
+        }
+        return true;
+    }
+
+    //! The generated table has to be the shape the lookup assumes: one offset per market plus a
+    //! terminator, and each market's dates ascending so the bisection is valid.
+    (:test)
+    function holidayTableIsWellFormed(logger as Logger) as Boolean {
+        if (Holidays.OFFSETS.size() != Markets.count() + 1) {
+            logger.error(Lang.format("OFFSETS has $1$ entries, expected $2$",
+                [Holidays.OFFSETS.size(), Markets.count() + 1]));
+            return false;
+        }
+        if (Holidays.LAST_COVERED_YEAR.size() != Markets.count()) {
+            logger.error("LAST_COVERED_YEAR does not have one entry per market");
+            return false;
+        }
+        if (Holidays.OFFSETS[Markets.count()] != Holidays.DAYS.size()) {
+            logger.error("the final offset does not match the number of dates");
+            return false;
+        }
+
+        for (var i = 0; i < Markets.count(); i += 1) {
+            var from = Holidays.OFFSETS[i];
+            var to = Holidays.OFFSETS[i + 1];
+            if (to < from) {
+                logger.error(Lang.format("$1$ has a negative length slice", [Markets.NAMES[i]]));
+                return false;
+            }
+            for (var j = from + 1; j < to; j += 1) {
+                if (Holidays.DAYS[j] <= Holidays.DAYS[j - 1]) {
+                    logger.error(Lang.format("$1$ dates are not ascending at index $2$",
+                        [Markets.NAMES[i], j]));
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    //! Past the published calendar the watch must assume nothing rather than invent closures.
+    (:test)
+    function nothingIsClaimedBeyondTheCalendar(logger as Logger) as Boolean {
+        for (var i = 0; i < Markets.count(); i += 1) {
+            var beyond = Holidays.LAST_COVERED_YEAR[i] + 1;
+            // 1 January of the first uncovered year: a holiday almost everywhere, and it must
+            // still come back false because the data does not reach that far.
+            var day = Zones.daysFromCivil(beyond, 1, 1);
+            if (Holidays.isClosed(i, day, beyond)) {
+                logger.error(Lang.format("$1$ claimed a holiday in $2$, past its calendar",
+                    [Markets.NAMES[i], beyond]));
+                return false;
+            }
+        }
+        return true;
+    }
+
     //! A market's session must land on the right side of "open" at instants either side of its
     //! own bell, and must never report a weekend session.
     (:test)

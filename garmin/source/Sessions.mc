@@ -21,9 +21,18 @@ module Sessions {
     const NONE = -1;
 
     //! How far either side of today to look for sessions. One day back covers a session that
-    //! opened before midnight UTC; four forward is enough to clear a weekend and land on Monday.
+    //! opened before midnight UTC.
+    //!
+    //! Sixteen forward is set by holidays, not weekends: Lunar New Year leaves a twelve day gap
+    //! between Taipei sessions in 2026 and eleven in Shanghai, once the flanking weekends are
+    //! counted. Four was enough when only weekends closed a market. Overshooting the longest known
+    //! gap is deliberate — if the window were ever shorter than a real closure the band would find
+    //! no next session and quietly vanish from the dial — and the extra days cost almost nothing,
+    //! since a closed day is rejected on a weekday test and a table lookup long before any daylight
+    //! saving arithmetic happens. tools/generate_holidays.py fails the build if a published
+    //! calendar ever exceeds this.
     const SEARCH_BACK = -1;
-    const SEARCH_FORWARD = 4;
+    const SEARCH_FORWARD = 16;
 
     //! Current and upcoming session for one market.
     //!
@@ -55,6 +64,14 @@ module Sessions {
             }
 
             var ymd = Zones.civilFromDays(day);
+
+            // Holidays are a date in the exchange's own calendar, which is what `day` already is.
+            // Beyond the published calendar this returns false, so the dial falls back to weekends
+            // only rather than inventing closures.
+            if (Holidays.isClosed(index, day, ymd[0])) {
+                continue;
+            }
+
             var start = Zones.localToUtc(
                 standard, rule, ymd[0], ymd[1], ymd[2], openMinute / 60, openMinute % 60);
             var end = Zones.localToUtc(
