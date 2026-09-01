@@ -1,3 +1,14 @@
 <strings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
     <string id="AppName">Market Sessions</string>
+
+    <string id="ThemeTitle">Theme</string>
+    <string id="ThemeIron">Iron</string>
+    <string id="ThemeCobalt">Cobalt</string>
+    <string id="ThemeEmber">Ember</string>
+
+    <string id="OpenColorTitle">Open sessions</string>
+    <string id="OpenRed">Red</string>
+    <string id="OpenGreen">Green</string>
+    <string id="OpenBlue">Blue</string>
+    <string id="OpenPurple">Purple</string>
 </strings>

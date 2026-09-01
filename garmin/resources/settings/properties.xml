@@ -1,0 +1,19 @@
+<properties xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+
+    <!--
+        Which theme the dial wears. The values match the constants in source/Palette.mc, so they are
+        part of the app's saved state: append new themes, never renumber existing ones.
+
+        0 Iron, 1 Cobalt, 2 Ember.
+    -->
+    <property id="theme" type="number">0</property>
+
+    <!--
+        The colour a trading session is drawn in, kept separate from the theme because it is the
+        one thing on the face that carries meaning rather than mood.
+
+        0 Red, 1 Green, 2 Blue, 3 Purple.
+    -->
+    <property id="openColor" type="number">0</property>
+
+</properties>

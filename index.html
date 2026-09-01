@@ -147,6 +147,16 @@ nav svg{width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:1.
 <main id="v-settings" hidden>
   <div class="sechead"><h2>Settings</h2></div>
   <div class="group">
+    <div class="opt"><label for="segPalette">Dial theme</label>
+      <div class="seg" id="segPalette">
+        <button data-v="iron">Iron</button><button data-v="cobalt">Cobalt</button><button data-v="ember">Ember</button>
+      </div>
+    </div>
+    <div class="opt"><label for="segSession">Open sessions</label>
+      <div class="seg" id="segSession">
+        <button data-v="red">Red</button><button data-v="green">Green</button><button data-v="blue">Blue</button><button data-v="purple">Purple</button>
+      </div>
+    </div>
     <div class="opt"><label for="segTheme">Appearance</label>
       <div class="seg" id="segTheme">
         <button data-v="auto">Auto</button><button data-v="light">Light</button><button data-v="dark">Dark</button>
@@ -201,7 +211,50 @@ const MARKETS = [
   {n:'NASDAQ',    f:'🇺🇸', tz:'America/New_York', o:[9,30], c:[16,0]}
 ];
 
-const state = {theme:'auto', tzMode:'utc', seconds:true, off:MARKETS.map(()=>false)};
+const state = {theme:'auto', palette:'iron', session:'red', tzMode:'utc', seconds:true,
+               off:MARKETS.map(()=>false)};
+
+/* ------------------------------------------------------------------
+   Dial themes. These are the same three grounds and four session
+   colours the Garmin build carries, so the three faces of the app can
+   be set to match. Light and dark remain a separate axis: they dress
+   the page around the dial, these dress the dial itself.
+
+   The session colour is chosen apart from the ground because it is the
+   one colour on the dial that carries meaning rather than mood.
+------------------------------------------------------------------ */
+const PALETTES = {
+  iron:   {'--dial-bg':'#070910', '--ring':'#3a4866', '--ring-text':'#e9eef8',
+           '--closed':'#8b95b1', '--hand':'#c9d3e4', '--tick':'#4a5573', '--second':'#ffb03a'},
+  cobalt: {'--dial-bg':'#050a16', '--ring':'#1d4a80', '--ring-text':'#e6f0ff',
+           '--closed':'#5e86be', '--hand':'#d6e4f7', '--tick':'#2a5a8f', '--second':'#ffb03a'},
+  ember:  {'--dial-bg':'#110503', '--ring':'#6a2010', '--ring-text':'#ffede4',
+           '--closed':'#a48c80', '--hand':'#f2e2d6', '--tick':'#6d4436', '--second':'#ffd98a'}
+};
+
+const SESSIONS = {red:'#e8503f', green:'#41c391', blue:'#3d93e8', purple:'#9463e6'};
+
+/* The dial's colours are set as inline custom properties rather than in a
+   stylesheet block, so they layer cleanly over whichever of light or dark
+   is in force without needing a rule for every combination. */
+function applyPalette(){
+  const root = document.documentElement;
+  const palette = PALETTES[state.palette] || PALETTES.iron;
+  for(const [name, value] of Object.entries(palette)) root.style.setProperty(name, value);
+  root.style.setProperty('--open', SESSIONS[state.session] || SESSIONS.red);
+  tellHost();
+}
+
+/* When this page is running inside the Android app rather than a browser, hand the
+   choice to the host so the home screen widget can be drawn to match. Absent in a
+   browser, which is why it is guarded rather than assumed. */
+function tellHost(){
+  try{
+    if(window.MarketSessionsHost && MarketSessionsHost.setDialTheme){
+      MarketSessionsHost.setDialTheme(state.palette, state.session);
+    }
+  }catch(e){}
+}
 
 /* ---------- time zone helpers ---------- */
 const fmtCache = new Map();
@@ -379,6 +432,8 @@ function buildSettings(){
   syncSegs();
 }
 function syncSegs(){
+  document.querySelectorAll('#segPalette button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===state.palette));
+  document.querySelectorAll('#segSession button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===state.session));
   document.querySelectorAll('#segTheme button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===state.theme));
   document.querySelectorAll('#segTz button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===state.tzMode));
   document.getElementById('chkSec').checked = state.seconds;
@@ -428,6 +483,12 @@ document.getElementById('themeBtn').addEventListener('click',()=>{
 document.getElementById('segTheme').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return; state.theme=b.dataset.v; applyTheme(); syncSegs(); save();
 });
+document.getElementById('segPalette').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return; state.palette=b.dataset.v; applyPalette(); syncSegs(); save();
+});
+document.getElementById('segSession').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(!b) return; state.session=b.dataset.v; applyPalette(); syncSegs(); save();
+});
 document.getElementById('segTz').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return; state.tzMode=b.dataset.v; syncSegs(); save(); tick(true);
 });
@@ -437,7 +498,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme)
 (async function start(){
   await load();
   if(!Array.isArray(state.off) || state.off.length!==MARKETS.length) state.off = MARKETS.map(()=>false);
-  applyTheme(); buildDial(); buildSettings(); tick(true);
+  applyTheme(); applyPalette(); buildDial(); buildSettings(); tick(true);
   setInterval(tick, 1000);
 })();
 </script>

@@ -15,7 +15,16 @@ class MarketSessionsApp extends Application.AppBase {
         AppBase.initialize();
     }
 
+    //! The theme is restored before any view is built, so the glance and the dial come up in the
+    //! same colours rather than the glance flashing the default first.
     function onStart(state as Dictionary?) as Void {
+        Settings.restore();
+    }
+
+    //! Garmin Connect pushing a settings change from the phone.
+    function onSettingsChanged() as Void {
+        Settings.restore();
+        WatchUi.requestUpdate();
     }
 
     function onStop(state as Dictionary?) as Void {

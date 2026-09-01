@@ -8,75 +8,92 @@ import Toybox.WatchUi;
 
 //! The 24 hour dial, the view the glance opens into.
 //!
-//! A port of the SVG in index.html and of DialRenderer.kt: the same 400 unit design grid, the same
-//! geometry constants, the same palette, scaled to whichever tactix 8 panel it is running on. One
-//! band per market, drawn at its own radius, green while that market is trading and grey while it
-//! waits for its next session.
+//! The geometry is still the web app's: a 400 unit design grid, one band per session, midnight at
+//! the top and noon at the bottom, so a whole day is one revolution. The finish is not. Connect IQ
+//! has no gradient primitive, so every fade here is a run of segments with `Palette.mix` between
+//! two endpoints — the ground darkening towards the centre, the hour ring cooling towards midnight,
+//! each session band travelling from its open to its close.
 //!
-//! The minute ring labels of the web app are dropped — illegible at watch size — and the hour
-//! labels thin out on the smaller panel. What survives at every size is the ring of bands, which
-//! is the thing the dial exists to show.
+//! The hands pivot on the rim of the summary dial rather than at the centre of the face. That is a
+//! choice, not a compromise: the middle of this dial is carrying three lines of text worth reading,
+//! and hands sweeping across them would cost more than the conventional look is worth. Skeleton
+//! watches have done the same thing for a century.
 class DialView extends WatchUi.View {
 
     // ---------------------------------------------------------------------------------------
-    // Design grid. Every constant below is in the web app's 400x400 SVG space and is scaled to
-    // the device in `onLayout`, so the three implementations stay comparable line by line.
+    // Design grid, in the web app's 400x400 space, scaled to the device in `onLayout`.
     // ---------------------------------------------------------------------------------------
 
     private const GRID = 400.0;
-    private const BAND_OUTER = 157.0;       //! radius of the outermost band's outer edge
-    private const RING_RADIUS = 177.0;      //! centre line of the hour ring
+    private const BAND_OUTER = 157.0;
+    private const RING_RADIUS = 177.0;
     private const RING_WIDTH = 22.0;
 
-    //! The band stack is tighter than the web app's 7.2 wide, 9.0 apart. In the browser the bands
-    //! run all the way down to a radius of 36 and the hands sweep over them; on a watch that
-    //! leaves nowhere legible for the summary, and covering the centre with it would hide the
-    //! innermost markets — which happen to be the American ones, not the ones anyone would choose
-    //! to lose. Narrowing the stack keeps every market visible and clears a disc to write in.
-    private const BAND_WIDTH = 4.6;
-    //! The summary disc, sitting inside the innermost band. Its size is a direct trade against
-    //! band spacing — every unit of radius here is a unit the stack cannot use — and it is set by
-    //! the narrowest thing written in it: the bottom row, furthest from the centre and so on the
-    //! shortest chord, which has to hold a countdown like "12h 05m" without falling back to a
-    //! coarser one.
+    private const BAND_WIDTH = 6.0;
     private const CARTOUCHE_RADIUS = 76.0;
     private const CARTOUCHE_CLEARANCE = 4.0;
+    private const HUB_RADIUS = 18.0;
 
-    //! Spacing between bands is not a constant: it is solved in `onLayout` from however many
-    //! markets the table holds, so that the innermost band always lands just outside the summary
-    //! disc. Adding a market tightens the stack instead of burying it.
+    //! Spacing between bands is solved in `onLayout` from however many markets the table holds, so
+    //! the innermost always lands outside the summary dial. Adding a market tightens the stack.
     private var _bandStep as Float = 6.0;
 
-    //! A 24 hour dial has no use for a minute or second hand: the whole face is one revolution per
-    //! day, so the hour hand alone says where in the day you are, and the other two would sweep a
-    //! scale they do not belong to. One marker replaces all three, and it starts at the edge of the
-    //! summary disc so it never crosses the text.
-    private const NOW_MARKER_OUTER = 150.0;
-    private const NOW_MARKER_GAP = 5.0;     //! clearance between the disc and the marker's tail
+    //! Where the hands begin, and how far each reaches. Short hour hand, long minute hand, as on
+    //! any watch — the hour hand is broad and red tipped so it still reads as the one pointing at
+    //! a session, without having to be the long one to do it.
+    //!
+    //! The minute hand stops on the inner edge of the fourth band rather than at a fixed radius, so
+    //! it lands on the geometry wherever the stack happens to sit. Adding or merging a market moves
+    //! every band; a hand measured in design units would drift off them.
+    private const HAND_PIVOT = 20.0;
+    private const HOUR_HAND_TIP = 96.0;
+    private const MINUTE_HAND_BAND = 3;
+    private var _minuteHandTip as Float = 130.0;
+
+    //! Segment counts for the two fades. Enough to read as continuous at this size, few enough
+    //! that a redraw stays inside the watchdog — earlier cuts of this face used 48 and 14, plus a
+    //! radial ground fade, and were killed mid-frame for running too long.
+    private const RING_STEPS = 30;
+    private const BAND_STEPS = 8;
 
     private const MINUTES_PER_DAY = 1440;
 
-    //! Device pixels per design unit, and the screen centre in pixels.
+    //! Colour ramps, resolved once in `onLayout`. Interpolating inside the draw loop meant a few
+    //! hundred float operations per redraw for values that never change between frames.
+    private var _ringRamp as Array<Number> = [] as Array<Number>;
+
+    //! The palette generation the ramps were built from, so a theme change rebuilds them.
+    private var _paletteGeneration as Number = -1;
+    private var _openRamp as Array<Number> = [] as Array<Number>;
+    private var _closedRamp as Array<Number> = [] as Array<Number>;
+
+    // ---------------------------------------------------------------------------------------
+    // Session cache.
+    //
+    // Resolving eleven markets means several hundred daylight saving and holiday lookups, and none
+    // of it changes until some market actually opens or closes. So it is done once and held until
+    // that moment — which turns the expensive part of a redraw from every fifteen seconds into
+    // roughly twice an hour.
+    // ---------------------------------------------------------------------------------------
+
+    private var _validUntil as Number = -1;
+    private var _aggregate as Array<Number> = [] as Array<Number>;
+    private var _windows as Array<Number> = [] as Array<Number>;
+    private var _isOpen as Array<Number> = [] as Array<Number>;
+
     private var _scale as Float = 1.0;
     private var _centerX as Number = 0;
     private var _centerY as Number = 0;
 
-    //! Hour numerals get crowded on the 280x280 panel, so label every sixth hour there and every
-    //! third on the 454x454 one. Resolved once in `onLayout`.
     private var _hourLabelStep as Number = 3;
-
-    //! Fonts chosen against the panel size rather than assumed.
-    private var _statusFont as FontDefinition = Graphics.FONT_TINY;
     private var _detailFont as FontDefinition = Graphics.FONT_XTINY;
     private var _hourFont as FontDefinition = Graphics.FONT_XTINY;
 
-    //! Redraws the dial as time passes. Only ever alive while this view is on screen, which is why
-    //! it is started in `onShow` rather than in `initialize`.
     private var _ticker as Timer.Timer?;
 
-    //! Nothing on this dial moves faster than a minute — the now marker creeps a quarter of a
-    //! degree per minute and the countdown is quoted in minutes — so a fifteen second tick keeps
-    //! it honest without redrawing fourteen arcs every second for no visible change.
+    //! Nothing here moves faster than a minute — the hour hand creeps a quarter of a degree per
+    //! minute and the countdown is quoted in minutes — so a fifteen second tick keeps it honest
+    //! without redrawing two hundred segments every second for no visible change.
     private const TICK_MS = 15000;
 
     function initialize() {
@@ -108,46 +125,149 @@ class DialView extends WatchUi.View {
         _centerY = dc.getHeight() / 2;
         _hourLabelStep = size >= 400 ? 3 : 6;
 
-        // Fit the stack between the outermost edge and the summary disc. Both radii below are of
-        // the band's centre line, which is half a band width inside its own edge.
         var outermost = BAND_OUTER - BAND_WIDTH / 2.0;
         var innermost = CARTOUCHE_RADIUS + CARTOUCHE_CLEARANCE + BAND_WIDTH / 2.0;
         var gaps = Markets.count() - 1;
         _bandStep = gaps > 0 ? (outermost - innermost) / gaps : 0.0;
 
-        if (size >= 400) {
-            _statusFont = Graphics.FONT_MEDIUM;
-            _detailFont = Graphics.FONT_XTINY;
-            _hourFont = Graphics.FONT_XTINY;
-        } else {
-            _statusFont = Graphics.FONT_TINY;
-            _detailFont = Graphics.FONT_XTINY;
-            _hourFont = Graphics.FONT_XTINY;
+        // Inner edge of the fourth band in: its centre line, less half a band.
+        _minuteHandTip = BAND_OUTER - MINUTE_HAND_BAND * _bandStep - BAND_WIDTH;
+
+        // Sized here because the market count cannot change without a rebuild.
+        _windows = new Array<Number>[Markets.count() * 2];
+        _isOpen = new Array<Number>[Markets.count()];
+        _validUntil = -1;
+
+        _detailFont = Graphics.FONT_XTINY;
+        _hourFont = Graphics.FONT_XTINY;
+
+        buildRamps();
+    }
+
+    //! The colour ramps, and the generation they came from.
+    private function buildRamps() as Void {
+        _openRamp = ramp(Palette.OPEN_FROM, Palette.OPEN_TO, BAND_STEPS);
+        _closedRamp = ramp(Palette.CLOSED_FROM, Palette.CLOSED_TO, BAND_STEPS);
+
+        // The ring's fade follows the angle rather than a straight run, cool at midnight and warm
+        // under the middle of the trading day, so it is built from a cosine rather than `ramp`.
+        _ringRamp = new Array<Number>[RING_STEPS];
+        for (var step = 0; step < RING_STEPS; step += 1) {
+            var degrees = step * 360.0 / RING_STEPS;
+            var t = (1.0 - Math.cos(degrees * Math.PI / 180.0)) / 2.0;
+            _ringRamp[step] = Palette.mix(Palette.RING_NIGHT, Palette.RING_DAY, t);
         }
+
+        _paletteGeneration = Palette.generation;
     }
 
     function onUpdate(dc as Dc) as Void {
         var now = Time.now().value();
 
-        dc.setColor(Graphics.COLOR_TRANSPARENT, Palette.DIAL_BG);
-        dc.clear();
+        // Every curve on this face is either an arc or a tapered polygon, and both look markedly
+        // better smoothed. Guarded because it arrived in API 3.2.0 and the manifest floor is lower.
+        if (dc has :setAntiAlias) {
+            dc.setAntiAlias(true);
+        }
 
+        if (_paletteGeneration != Palette.generation) {
+            buildRamps();
+        }
+
+        refresh(now);
+        drawGround(dc);
         drawRing(dc);
-        var aggregate = drawBands(dc, now);
-        drawNowMarker(dc, now);
-        drawCartouche(dc, aggregate, now);
+        drawBands(dc);
+        drawReadout(dc, now);
+        drawHands(dc, now);
+        drawHub(dc);
+    }
+
+    //! `count` colours stepping from `from` to `to`.
+    private function ramp(from as Number, to as Number, count as Number) as Array<Number> {
+        var colours = new Array<Number>[count];
+        for (var i = 0; i < count; i += 1) {
+            colours[i] = Palette.mix(from, to, count > 1 ? i / (count - 1.0) : 0.0);
+        }
+        return colours;
+    }
+
+    //! Resolve every market, but only when the last answer has expired.
+    //!
+    //! Nothing on this face changes between transitions: a band's arc, its colour and the summary
+    //! all hold until some market opens or closes. Holding them until that instant is what keeps
+    //! the redraw inside the watchdog now that the face is drawn in a few hundred segments.
+    private function refresh(now as Number) as Void {
+        if (_validUntil != -1 && now < _validUntil && _aggregate.size() > 0) {
+            return;
+        }
+
+        var openCount = 0;
+        var soonestIndex = Sessions.NONE;
+        var soonestAt = Sessions.NONE;
+        var soonestIsClose = 0;
+
+        for (var i = 0; i < Markets.count(); i += 1) {
+            var state = Sessions.stateOf(i, now);
+
+            _isOpen[i] = state[Sessions.STATE_IS_OPEN];
+            _windows[i * 2] = state[Sessions.STATE_START];
+            _windows[i * 2 + 1] = state[Sessions.STATE_END];
+
+            if (state[Sessions.STATE_IS_OPEN] == 1) {
+                openCount += 1;
+            }
+
+            var at = state[Sessions.STATE_TRANSITION];
+            if (at != Sessions.NONE && (soonestAt == Sessions.NONE || at < soonestAt)) {
+                soonestAt = at;
+                soonestIndex = i;
+                soonestIsClose = state[Sessions.STATE_IS_OPEN];
+            }
+        }
+
+        _aggregate = [openCount, soonestIndex, soonestAt, soonestIsClose] as Array<Number>;
+
+        // Recompute at the next transition. With no transition to wait for — which should not
+        // happen, but a market table could in principle produce it — fall back to an hour.
+        _validUntil = soonestAt != Sessions.NONE ? soonestAt : now + 3600;
     }
 
     // ---------------------------------------------------------------------------------------
-    // Dial furniture
+    // Ground and ring
     // ---------------------------------------------------------------------------------------
 
-    //! The hour ring and its numerals. Hour 24 sits at the top, so the dial reads as a day
-    //! rather than as a clock: midnight up, noon down.
+    //! The face.
+    //!
+    //! This was a radial fade, drawn as concentric filled discs from the rim inwards, because
+    //! Connect IQ has no gradient primitive. It cost the app its life: twenty two fills of a
+    //! 454 pixel disc is about four and a half million pixel writes, and the watchdog killed the
+    //! frame every time. Everything else on this face put together — the ring, eleven faded bands,
+    //! the hands — is under a tenth of that.
+    //!
+    //! A buffered bitmap would buy the fade back by drawing it once, but a full screen buffer is
+    //! roughly 412 KB against a 768 KB app budget, which is a poor trade for an effect that was
+    //! barely visible on an AMOLED panel and mostly read as banding. So the ground is flat, and
+    //! the fades live where they earn their place: around the ring, and along each session.
+    private function drawGround(dc as Dc) as Void {
+        dc.setColor(Palette.GROUND_CORE, Palette.GROUND_CORE);
+        dc.clear();
+    }
+
+    //! The hour ring and its numerals, cool at midnight and warmer towards noon. Hour 24 sits at
+    //! the top, so the dial reads as a day rather than as a clock.
     private function drawRing(dc as Dc) as Void {
-        dc.setColor(Palette.RING, Graphics.COLOR_TRANSPARENT);
+        var radius = px(RING_RADIUS);
         dc.setPenWidth(px(RING_WIDTH));
-        dc.drawCircle(_centerX, _centerY, px(RING_RADIUS));
+
+        var sweep = 360.0 / RING_STEPS;
+        for (var step = 0; step < RING_STEPS; step += 1) {
+            var from = step * sweep;
+            dc.setColor(_ringRamp[step], Graphics.COLOR_TRANSPARENT);
+
+            // A hair of overlap, or antialiasing leaves a seam between every pair of segments.
+            drawArcBetween(dc, radius, from - 0.6, from + sweep + 0.6);
+        }
 
         dc.setColor(Palette.RING_TEXT, Graphics.COLOR_TRANSPARENT);
         var half = dc.getFontHeight(_hourFont) / 2;
@@ -163,155 +283,173 @@ class DialView extends WatchUi.View {
         }
     }
 
-    //! One band per market, outermost first, in table order. Returns the aggregate from the same
-    //! sweep so the cartouche does not have to resolve every market a second time.
-    private function drawBands(dc as Dc, now as Number) as Array<Number> {
-        var openCount = 0;
-        var soonestIndex = Sessions.NONE;
-        var soonestAt = Sessions.NONE;
-        var soonestIsClose = 0;
+    // ---------------------------------------------------------------------------------------
+    // Sessions
+    // ---------------------------------------------------------------------------------------
 
+    //! One band per market, outermost first, each faded from its open to its close. Reads the
+    //! sessions `refresh` resolved rather than resolving them again.
+    private function drawBands(dc as Dc) as Void {
         dc.setPenWidth(px(BAND_WIDTH));
 
         for (var i = 0; i < Markets.count(); i += 1) {
-            var state = Sessions.stateOf(i, now);
-            var isOpen = state[Sessions.STATE_IS_OPEN] == 1;
-
-            if (isOpen) {
-                openCount += 1;
-            }
-
-            var at = state[Sessions.STATE_TRANSITION];
-            if (at != Sessions.NONE && (soonestAt == Sessions.NONE || at < soonestAt)) {
-                soonestAt = at;
-                soonestIndex = i;
-                soonestIsClose = state[Sessions.STATE_IS_OPEN];
-            }
-
-            var start = state[Sessions.STATE_START];
-            var end = state[Sessions.STATE_END];
+            var start = _windows[i * 2];
+            var end = _windows[i * 2 + 1];
             if (start == Sessions.NONE || end == Sessions.NONE) {
                 continue;
             }
 
-            // Bands stack inwards, each one step narrower in radius than the last, and the band's
-            // centre line sits half a band width inside its nominal outer edge.
             var radius = BAND_OUTER - i * _bandStep - BAND_WIDTH / 2.0;
-
-            dc.setColor(isOpen ? Palette.OPEN : Palette.CLOSED, Graphics.COLOR_TRANSPARENT);
-            drawSessionArc(dc, radius, start, end);
+            drawSession(dc, radius, start, end, _isOpen[i] == 1);
         }
-
-        return [openCount, soonestIndex, soonestAt, soonestIsClose] as Array<Number>;
     }
 
-    //! A session drawn as an arc between its open and close positions on the 24 hour dial.
-    private function drawSessionArc(dc as Dc, radius as Float, start as Number, end as Number) as Void {
+    //! A session as a run of short arcs, the colour travelling from the open to the close so the
+    //! band has a direction rather than sitting flat.
+    private function drawSession(dc as Dc, radius as Float, start as Number, end as Number,
+            isOpen as Boolean) as Void {
         var from = Sessions.displayMinuteOfDay(start) / MINUTES_PER_DAY * 360.0;
         var to = Sessions.displayMinuteOfDay(end) / MINUTES_PER_DAY * 360.0;
 
         var sweep = to - from;
         if (sweep <= 0) {
-            sweep += 360.0;                 // the session straddles local midnight
+            sweep += 360.0;             // the session straddles local midnight
         }
         if (sweep < 1.0) {
-            sweep = 1.0;                    // never collapse to the "equal angles" full circle
+            sweep = 1.0;
         }
         if (sweep > 359.0) {
             sweep = 359.0;
         }
 
-        // Dial angles run clockwise from midnight at the top; Dc angles run counter-clockwise from
-        // the 3 o'clock position, so the two are related by `dcAngle = 90 - dialAngle`.
-        var dcStart = normalise(90.0 - from);
-        var dcEnd = normalise(90.0 - (from + sweep));
+        var colours = isOpen ? _openRamp : _closedRamp;
+        var step = sweep / BAND_STEPS;
+        var scaled = px(radius);
 
-        dc.drawArc(_centerX, _centerY, px(radius), Graphics.ARC_CLOCKWISE, dcStart, dcEnd);
+        for (var segment = 0; segment < BAND_STEPS; segment += 1) {
+            dc.setColor(colours[segment], Graphics.COLOR_TRANSPARENT);
+            var edge = segment == BAND_STEPS - 1 ? 0.0 : 0.5;
+            drawArcBetween(dc, scaled, from + segment * step, from + (segment + 1) * step + edge);
+        }
     }
 
-    //! The now marker: one radial line at the current time of day, turning once per day so that
-    //! the band it points into is the session happening right now.
-    private function drawNowMarker(dc as Dc, now as Number) as Void {
-        var degrees = Sessions.displayMinuteOfDay(now) / MINUTES_PER_DAY * 360.0;
-        var inner = CARTOUCHE_RADIUS + NOW_MARKER_GAP;
+    // ---------------------------------------------------------------------------------------
+    // Hands
+    // ---------------------------------------------------------------------------------------
 
-        dc.setColor(Palette.HAND, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(px(5.0));
-        dc.drawLine(
-            polarX(inner, degrees), polarY(inner, degrees),
-            polarX(NOW_MARKER_OUTER, degrees), polarY(NOW_MARKER_OUTER, degrees));
+    //! Hour and minute hands, tapered, pivoting on the rim of the summary dial.
+    private function drawHands(dc as Dc, now as Number) as Void {
+        var minuteOfDay = Sessions.displayMinuteOfDay(now);
 
-        // A tip dot the width of the marker, so the exact minute stays readable where the line
-        // crosses the outermost band.
-        dc.fillCircle(
-            polarX(NOW_MARKER_OUTER, degrees), polarY(NOW_MARKER_OUTER, degrees), px(4.0));
+        // Monkey C's modulo is integer only, so the minute hand's position within the hour comes
+        // from subtracting the whole hours rather than with `%`. Keeping it in Float preserves the
+        // sub-minute movement that makes the hand sweep rather than step.
+        var minutesIntoHour = minuteOfDay - (minuteOfDay.toNumber() / 60) * 60;
+
+        // Minute hand first, so the hour hand — the one that points at a session — sits on top.
+        drawHand(dc, minutesIntoHour / 60.0 * 360.0, _minuteHandTip, 4.5, 1.5,
+            Palette.HAND, null);
+        drawHand(dc, minuteOfDay / MINUTES_PER_DAY * 360.0, HOUR_HAND_TIP, 7.2, 2.4,
+            Palette.HAND, Palette.ACCENT_HOT);
     }
 
-    //! The summary disc at the centre: how many markets are trading, and what flips next.
+    //! One tapered hand, drawn as a keyline polygon with a narrower coloured one on top.
     //!
-    //! It sits on top of the hands rather than under them. The hands still read clearly from the
-    //! disc's edge outwards, and the count is the one thing worth being able to take in without
-    //! tracing a band around the dial.
-    private function drawCartouche(dc as Dc, aggregate as Array<Number>, now as Number) as Void {
-        var openCount = aggregate[Sessions.SUMMARY_OPEN_COUNT];
-        var nextIndex = aggregate[Sessions.SUMMARY_INDEX];
-        var nextAt = aggregate[Sessions.SUMMARY_AT];
+    //! The keyline is what lets a hand cross eleven bands of arbitrary colour and stay a hand. The
+    //! tip takes the warm accent on both hands, which ties them together and puts the eye on the
+    //! end that is doing the pointing.
+    private function drawHand(dc as Dc, degrees as Float, tip as Float, halfBase as Float,
+            halfTip as Float, body as Number, tipColour as Number?) as Void {
+        var radians = (degrees - 90.0) * Math.PI / 180.0;
+        var alongX = Math.cos(radians);
+        var alongY = Math.sin(radians);
+        var acrossX = -alongY;
+        var acrossY = alongX;
 
-        var radius = px(CARTOUCHE_RADIUS);
+        // A dark shoulder a shade wider than the hand itself, so it separates from whatever band
+        // it happens to be lying over.
+        fillTaper(dc, alongX, alongY, acrossX, acrossY, HAND_PIVOT, tip,
+            halfBase + 1.1, halfTip + 1.1, Palette.GROUND_CORE);
+        fillTaper(dc, alongX, alongY, acrossX, acrossY, HAND_PIVOT, tip,
+            halfBase, halfTip, body);
 
-        dc.setColor(Palette.DIAL_BG, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(_centerX, _centerY, radius);
+        // The last fifth of the hand, in the accent — only the hour hand gets one. It is the hand
+        // that points at a session, and a second flash of red would just be decoration.
+        if (tipColour != null) {
+            var shoulder = tip - (tip - HAND_PIVOT) * 0.2;
+            fillTaper(dc, alongX, alongY, acrossX, acrossY, shoulder, tip,
+                halfBase * 0.45, halfTip, tipColour);
+        }
+    }
 
-        // The rim takes the colour of the answer, so the dial reads open or shut from across a
-        // room before any of the text resolves.
-        dc.setColor(openCount > 0 ? Palette.OPEN : Palette.CLOSED, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(px(2.0));
-        dc.drawCircle(_centerX, _centerY, radius);
+    private function fillTaper(dc as Dc, alongX as Float, alongY as Float, acrossX as Float,
+            acrossY as Float, from as Float, to as Float, halfFrom as Float, halfTo as Float,
+            colour as Number) as Void {
+        var baseX = _centerX + alongX * from * _scale;
+        var baseY = _centerY + alongY * from * _scale;
+        var tipX = _centerX + alongX * to * _scale;
+        var tipY = _centerY + alongY * to * _scale;
 
-        // Three short rows rather than two longer ones. A circle is a poor shape for a line of
-        // text — "NYSE 2h 14m" is wider than this disc is anywhere, at the smallest font Garmin
-        // ships — but a fine shape for a stack of short ones, and stacking keeps all three facts:
-        // how many markets are trading, which one moves next, and how long until it does.
-        var countHeight = dc.getFontHeight(_statusFont);
-        var rowHeight = dc.getFontHeight(_detailFont);
-        var hasNext = nextIndex != Sessions.NONE && nextAt != Sessions.NONE;
+        var b = halfFrom * _scale;
+        var t = halfTo * _scale;
 
-        var y = _centerY - (countHeight + (hasNext ? 2 * rowHeight : 0)) / 2;
+        dc.setColor(colour, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([
+            [(baseX + acrossX * b).toNumber(), (baseY + acrossY * b).toNumber()],
+            [(tipX + acrossX * t).toNumber(), (tipY + acrossY * t).toNumber()],
+            [(tipX - acrossX * t).toNumber(), (tipY - acrossY * t).toNumber()],
+            [(baseX - acrossX * b).toNumber(), (baseY - acrossY * b).toNumber()]
+        ]);
+    }
 
-        dc.drawText(
-            _centerX,
-            y,
-            _statusFont,
-            openCount > 0 ? openCount.format("%d") : "0",
-            Graphics.TEXT_JUSTIFY_CENTER);
-        y += countHeight;
+    // ---------------------------------------------------------------------------------------
+    // Summary
+    // ---------------------------------------------------------------------------------------
 
-        if (!hasNext) {
+    //! The dial at the centre: how many markets are trading, which moves next, and when. Its rim
+    //! is also the pivot the hands turn on, which is why it is drawn last — over the hand roots.
+    //! What moves next, printed on the face below the hub.
+    //!
+    //! Drawn before the hands, so a hand crossing it simply covers it — no recess, no routing
+    //! around it. It is a line you read when you look for it, not one that has to survive being
+    //! looked at from any angle at any minute.
+    private function drawReadout(dc as Dc, now as Number) as Void {
+        var nextIndex = _aggregate[Sessions.SUMMARY_INDEX];
+        var nextAt = _aggregate[Sessions.SUMMARY_AT];
+        if (nextIndex == Sessions.NONE || nextAt == Sessions.NONE) {
             return;
         }
 
+        var label = fit(dc, _detailFont, px(CARTOUCHE_RADIUS * 1.6), [
+            Markets.CODES[nextIndex] + " " + Sessions.formatGap(nextAt - now),
+            Markets.CODES[nextIndex] + " " + Sessions.formatGapCompact(nextAt - now),
+            Sessions.formatGapCompact(nextAt - now)
+        ] as Array<String>);
+
         dc.setColor(Palette.DIM, Graphics.COLOR_TRANSPARENT);
-
-        dc.drawText(_centerX, y, _detailFont,
-            fit(dc, _detailFont, chordAt(radius, y, y + rowHeight),
-                [Markets.CODES[nextIndex]] as Array<String>),
-            Graphics.TEXT_JUSTIFY_CENTER);
-        y += rowHeight;
-
-        dc.drawText(_centerX, y, _detailFont,
-            fit(dc, _detailFont, chordAt(radius, y, y + rowHeight), [
-                Sessions.formatGap(nextAt - now),
-                Sessions.formatGapCompact(nextAt - now),
-                Sessions.formatGapHours(nextAt - now)
-            ] as Array<String>),
+        dc.drawText(_centerX, _centerY + px(36.0), _detailFont, label,
             Graphics.TEXT_JUSTIFY_CENTER);
     }
 
-    //! How wide a line of text may be to stay inside the summary disc.
+    //! The hub, over the roots of both hands the way a centre cap sits over a pinion.
     //!
-    //! The disc is a circle, so the room a row has depends on how far it sits from the centre: the
-    //! binding constraint is whichever of the row's two edges is further out. Deriving it beats
-    //! guessing at a fraction of the diameter, which either wastes half the disc or overruns it.
+    //! It held the number of open markets until that turned out to be a fact nobody needed spelled
+    //! out — the green bands already say how many are trading. What survives is the rim, which
+    //! still carries open-or-shut in a colour readable across a room.
+    private function drawHub(dc as Dc) as Void {
+        var radius = px(HUB_RADIUS);
+
+        dc.setColor(Palette.GROUND_CORE, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(_centerX, _centerY, radius);
+
+        dc.setColor(_aggregate[Sessions.SUMMARY_OPEN_COUNT] > 0 ? Palette.OPEN : Palette.CLOSED,
+            Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(px(2.4));
+        dc.drawCircle(_centerX, _centerY, radius);
+    }
+
+    //! How wide a line of text may be to stay inside the summary dial. The binding constraint is
+    //! whichever of the row's edges sits further from the centre.
     private function chordAt(radius as Number, rowTop as Number, rowBottom as Number) as Number {
         var above = _centerY - rowTop;
         var below = rowBottom - _centerY;
@@ -322,18 +460,13 @@ class DialView extends WatchUi.View {
         }
 
         var half = Math.sqrt(radius * radius - furthest * furthest);
-        var usable = (2 * half).toNumber() - px(4.0);   // a hair of clearance off the rim
+        var usable = (2 * half).toNumber() - px(4.0);
         return usable < 0 ? 0 : usable;
     }
 
-    //! The first candidate that fits, or the last one if none do — the same measure-then-choose
-    //! approach the glance uses, for the same reason: string widths are not knowable up front.
-    private function fit(
-        dc as Dc,
-        font as FontDefinition,
-        usable as Number,
-        candidates as Array<String>
-    ) as String {
+    //! The first candidate that fits, or the last one if none do.
+    private function fit(dc as Dc, font as FontDefinition, usable as Number,
+            candidates as Array<String>) as String {
         for (var i = 0; i < candidates.size(); i += 1) {
             if (dc.getTextWidthInPixels(candidates[i], font) <= usable) {
                 return candidates[i];
@@ -343,9 +476,14 @@ class DialView extends WatchUi.View {
     }
 
     // ---------------------------------------------------------------------------------------
-    // Geometry helpers, matching `polar()` in index.html: zero degrees is straight up and angles
-    // increase clockwise.
+    // Geometry. Zero degrees is straight up and angles increase clockwise, matching `polar()` in
+    // index.html; Dc angles run counter-clockwise from 3 o'clock, hence the 90 minus.
     // ---------------------------------------------------------------------------------------
+
+    private function drawArcBetween(dc as Dc, radius as Number, from as Float, to as Float) as Void {
+        dc.drawArc(_centerX, _centerY, radius, Graphics.ARC_CLOCKWISE,
+            normalise(90.0 - from), normalise(90.0 - to));
+    }
 
     private function px(designUnits as Numeric) as Number {
         var scaled = (designUnits * _scale + 0.5).toNumber();
@@ -353,17 +491,15 @@ class DialView extends WatchUi.View {
     }
 
     private function polarX(radius as Float, degrees as Float) as Number {
-        var radians = (degrees - 90.0) * Math.PI / 180.0;
-        return _centerX + (radius * _scale * Math.cos(radians)).toNumber();
+        return _centerX + (radius * _scale * Math.cos((degrees - 90.0) * Math.PI / 180.0)).toNumber();
     }
 
     private function polarY(radius as Float, degrees as Float) as Number {
-        var radians = (degrees - 90.0) * Math.PI / 180.0;
-        return _centerY + (radius * _scale * Math.sin(radians)).toNumber();
+        return _centerY + (radius * _scale * Math.sin((degrees - 90.0) * Math.PI / 180.0)).toNumber();
     }
 
-    //! Fold an angle into [0, 360). Written as a loop because Monkey C's `%` is integer only and
-    //! rounding through a Number here would visibly quantise the arcs.
+    //! Fold an angle into [0, 360). A loop because Monkey C's `%` is integer only and rounding
+    //! through a Number would visibly quantise the arcs.
     private function normalise(degrees as Float) as Float {
         var d = degrees;
         while (d < 0.0) {
