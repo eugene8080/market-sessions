@@ -43,7 +43,14 @@ class DialRenderer(private val size: Int, private val detail: DialStyle = DialSt
         const val CLOSED = 0xFF8F97B6.toInt()
         const val HAND = 0xFFC3CBDF.toInt()
         const val GRID = 0x17FFFFFF
-        const val BAND_TEXT = 0xFF0E1116.toInt()
+
+        /**
+         * Market names on the bands. White rather than the near-black this used to be: dark type
+         * measures better against a mid-tone band, but at this size it reads as a smudge, and the
+         * eye separates white lettering from a dark dial more readily than it resolves dark
+         * lettering from the band under it. Matches the web app, which the in-app screen renders.
+         */
+        const val BAND_TEXT = 0xFFFFFFFF.toInt()
     }
 
     private companion object {
@@ -63,10 +70,17 @@ class DialRenderer(private val size: Int, private val detail: DialStyle = DialSt
         color = Palette.RING_TEXT
     }
 
+    /**
+     * Band labels are deliberately taller than the 7.2 band they sit on, matching the web app: at
+     * 6f they were legible on a desktop and not on a phone. Spilling into the gap either side costs
+     * nothing, because a neighbouring band only collides where the two sessions overlap in the day
+     * AND both labels sit at the same angle, which they never do — each is centred on its own
+     * session. `label` still drops any name too long for its own arc.
+     */
     private val bandText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.LEFT
         typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
-        textSize = 6f
+        textSize = 8.5f
         letterSpacing = 0.09f
         color = Palette.BAND_TEXT
     }

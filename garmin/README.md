@@ -15,6 +15,9 @@ band is named the way the exchange column of an IBKR watchlist names it. They we
 IBKR's contract database, not written from memory; several are not what you would guess (Xetra is
 `IBIS`, Zurich is `EBS`, Paris is `SBF`), and `TSE` is Toronto while `TSEJ` is Tokyo.
 
+Store submission copy — including the disclaimer and why it is worded the way it is — lives in
+[`store-listing.md`](store-listing.md).
+
 ## Devices
 
 Garmin ships the tactix line under the equivalent fēnix part numbers, so the two product ids in
