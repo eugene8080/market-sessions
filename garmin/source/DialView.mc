@@ -56,6 +56,9 @@ class DialView extends WatchUi.View {
     //! Colour ramps, resolved once in `onLayout`. Interpolating inside the draw loop meant a few
     //! hundred float operations per redraw for values that never change between frames.
     private var _ringRamp as Array<Number> = [] as Array<Number>;
+
+    //! The palette generation the ramps were built from, so a theme change rebuilds them.
+    private var _paletteGeneration as Number = -1;
     private var _openRamp as Array<Number> = [] as Array<Number>;
     private var _closedRamp as Array<Number> = [] as Array<Number>;
 
@@ -122,6 +125,19 @@ class DialView extends WatchUi.View {
         var gaps = Markets.count() - 1;
         _bandStep = gaps > 0 ? (outermost - innermost) / gaps : 0.0;
 
+        // Sized here because the market count cannot change without a rebuild.
+        _windows = new Array<Number>[Markets.count() * 2];
+        _isOpen = new Array<Number>[Markets.count()];
+        _validUntil = -1;
+
+        _detailFont = Graphics.FONT_XTINY;
+        _hourFont = Graphics.FONT_XTINY;
+
+        buildRamps();
+    }
+
+    //! The colour ramps, and the generation they came from.
+    private function buildRamps() as Void {
         _openRamp = ramp(Palette.OPEN_FROM, Palette.OPEN_TO, BAND_STEPS);
         _closedRamp = ramp(Palette.CLOSED_FROM, Palette.CLOSED_TO, BAND_STEPS);
 
@@ -134,18 +150,7 @@ class DialView extends WatchUi.View {
             _ringRamp[step] = Palette.mix(Palette.RING_NIGHT, Palette.RING_DAY, t);
         }
 
-        // A layout change invalidates nothing about the sessions, but the arrays are sized here.
-        _windows = new Array<Number>[Markets.count() * 2];
-        _isOpen = new Array<Number>[Markets.count()];
-        _validUntil = -1;
-
-        if (size >= 400) {
-            _detailFont = Graphics.FONT_XTINY;
-            _hourFont = Graphics.FONT_XTINY;
-        } else {
-            _detailFont = Graphics.FONT_XTINY;
-            _hourFont = Graphics.FONT_XTINY;
-        }
+        _paletteGeneration = Palette.generation;
     }
 
     function onUpdate(dc as Dc) as Void {
@@ -155,6 +160,10 @@ class DialView extends WatchUi.View {
         // better smoothed. Guarded because it arrived in API 3.2.0 and the manifest floor is lower.
         if (dc has :setAntiAlias) {
             dc.setAntiAlias(true);
+        }
+
+        if (_paletteGeneration != Palette.generation) {
+            buildRamps();
         }
 
         refresh(now);

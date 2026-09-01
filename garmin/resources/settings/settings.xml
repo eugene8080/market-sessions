@@ -1,0 +1,16 @@
+<settings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+
+    <!--
+        Shown in Garmin Connect and Garmin Express for a store install. A sideloaded app may not
+        appear there at all, which is why the same choice is also on the watch: press MENU on the
+        dial. Both write this property.
+    -->
+    <setting propertyKey="@Properties.theme" title="@Strings.ThemeTitle">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.ThemeIron</listEntry>
+            <listEntry value="1">@Strings.ThemeClassic</listEntry>
+            <listEntry value="2">@Strings.ThemeEmber</listEntry>
+        </settingConfig>
+    </setting>
+
+</settings>

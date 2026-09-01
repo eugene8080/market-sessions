@@ -1,0 +1,11 @@
+<properties xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+
+    <!--
+        Which theme the dial wears. The values match the constants in source/Palette.mc, so they are
+        part of the app's saved state: append new themes, never renumber existing ones.
+
+        0 Iron, 1 Classic, 2 Ember.
+    -->
+    <property id="theme" type="number">0</property>
+
+</properties>
