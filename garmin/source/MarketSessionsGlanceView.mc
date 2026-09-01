@@ -80,9 +80,24 @@ class MarketSessionsGlanceView extends WatchUi.GlanceView {
 
         var y = padY;
         if (showCaption) {
+            // The caption is the row nearest the top of the band, which is the row the round glass
+            // eats into most, and `textWidth` cannot account for that: the Dc is a rectangle whose
+            // overhang past the glass differs by device and is not readable from inside a glance.
+            // Measured, the Forerunner 255 lost the final S of "MARKET SESSIONS" while the tactix 8
+            // showed it with room to spare, at nearly identical fractions of their own Dc widths —
+            // so no margin expressed in Dc or screen widths separates the two cases.
+            //
+            // So this is a stated policy rather than a derivation: below 300 pixels the caption
+            // takes the short form, which clears the glass with a wide margin everywhere. It is the
+            // least informative row on the glance — the carousel already labels the app — and
+            // losing a word off it is worth more than losing a letter off the end of it.
+            var titles = System.getDeviceSettings().screenWidth >= 300
+                ? ["MARKET SESSIONS", "MARKETS"] as Array<String>
+                : ["MARKETS"] as Array<String>;
+
             dc.setColor(Palette.DIM, Graphics.COLOR_TRANSPARENT);
             dc.drawText(middle, y, Graphics.FONT_XTINY,
-                fit(dc, Graphics.FONT_XTINY, textWidth, ["MARKET SESSIONS", "MARKETS"]),
+                fit(dc, Graphics.FONT_XTINY, textWidth, titles),
                 Graphics.TEXT_JUSTIFY_CENTER);
             y += captionHeight;
         }

@@ -2,10 +2,20 @@
 <!--
     Market Sessions for Connect IQ.
 
-    The product list is the tactix 8 family. Garmin ships the tactix line under the equivalent
-    fenix part numbers — the tactix 8 47mm and 51mm are `fenix847mm`, and the tactix 8 Solar 51mm
-    is `fenix8solar51mm` — so those two ids cover every tactix 8, and the fenix 8 and quatix 8 that
+    The tactix 8 family first. Garmin ships the tactix line under the equivalent fenix part
+    numbers — the tactix 8 47mm and 51mm are `fenix847mm`, and the tactix 8 Solar 51mm is
+    `fenix8solar51mm` — so those two ids cover every tactix 8, and the fenix 8 and quatix 8 that
     share their hardware come along for free.
+
+    Then the Forerunner 255, which needs all four of its ids: the 255 and the 255s are different
+    screens (260 and 218 pixels), and each has a Music variant that is a separate product to
+    Connect IQ even though the display is identical.
+
+    The Forerunner is a materially different machine from the tactix and not merely a smaller one.
+    It reports no `enhancedGraphicSupport`, so `Graphics.getVectorFont` is not there and the dial
+    and the list both fall back to system fonts; its panel is an 8 bit MIP, so every colour snaps to
+    Garmin's fixed palette; and it is a slower processor running the same drawing, which is what the
+    watchdog cares about.
 
     minSdkVersion is 3.1.0, the level that introduced AppBase.getGlanceView(). Both targets are far
     above it; the floor is stated at the feature that actually constrains the app rather than at the
@@ -16,6 +26,10 @@
         <iq:products>
             <iq:product id="fenix847mm"/>
             <iq:product id="fenix8solar51mm"/>
+            <iq:product id="fr255"/>
+            <iq:product id="fr255m"/>
+            <iq:product id="fr255s"/>
+            <iq:product id="fr255sm"/>
         </iq:products>
         <!-- The app reads the clock and nothing else: no position, no sensors, no network. -->
         <iq:permissions/>

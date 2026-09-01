@@ -1,4 +1,4 @@
-<svg width="40" height="40" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<svg width="65" height="65" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
   <!--
     The 24 hour dial reduced to what still reads at launcher size: the ring, one open session in
     the app's green, one waiting session in its grey, and a hand. Colours are the dark theme from
@@ -6,7 +6,7 @@
 
     The drawing stays on the 48 unit grid; only width and height change between the two device
     copies of this file, so the compiler rasterises the vector at exactly the size the device asks
-    for instead of scaling a bitmap. This copy is the 40x40 the tactix 8 Solar wants.
+    for instead of scaling a bitmap. This is the 65x65 copy, which only the tactix 8 AMOLED asks for.
   -->
   <circle cx="24" cy="24" r="23" fill="#151821"/>
   <circle cx="24" cy="24" r="19" fill="none" stroke="#3C4761" stroke-width="4"/>

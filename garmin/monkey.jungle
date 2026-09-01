@@ -1,7 +1,20 @@
 project.manifest = manifest.xml
 
-# Nothing else is needed here. Strings live in `resources`, which every device picks up, and the
-# launcher icon lives in `resources-fenix847mm` and `resources-fenix8solar51mm`, which the
-# compiler adds to each device's resource path by convention. The two copies hold the same drawing
-# at each panel's own icon size — 65x65 and 40x40 — so the vector is rasterised at the right size
-# instead of a bitmap being scaled into place.
+# Strings and settings live in `resources`, which every device picks up automatically.
+#
+# The launcher icon does not: each product tells the compiler what size it wants, and a build fails
+# outright if no bitmap matches. The tactix 8 AMOLED asks for 65x65; the tactix 8 Solar and all four
+# Forerunner 255 variants ask for 40x40. Rather than five copies of one drawing in five directories
+# named after devices, the two directories are named for the size and each product is pointed at
+# the one it needs. Adding a device is then a line here, not a duplicated file.
+#
+# Both hold the same vector at the size that device asks for, so the compiler rasterises it exactly
+# instead of scaling a bitmap into place.
+
+fenix847mm.resourcePath = $(fenix847mm.resourcePath);resources-icon-65
+
+fenix8solar51mm.resourcePath = $(fenix8solar51mm.resourcePath);resources-icon-40
+fr255.resourcePath = $(fr255.resourcePath);resources-icon-40
+fr255m.resourcePath = $(fr255m.resourcePath);resources-icon-40
+fr255s.resourcePath = $(fr255s.resourcePath);resources-icon-40
+fr255sm.resourcePath = $(fr255sm.resourcePath);resources-icon-40

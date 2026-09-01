@@ -54,6 +54,17 @@ Write-Host "SDK: $($sdk.Name)" -ForegroundColor Cyan
 $targets = [ordered]@{
     "fenix847mm"      = "MarketSessions-tactix8-AMOLED-47mm-and-51mm"
     "fenix8solar51mm" = "MarketSessions-tactix8-SOLAR-51mm"
+    "fr255"           = "MarketSessions-forerunner255-and-255-Music"
+    "fr255s"          = "MarketSessions-forerunner255s-and-255s-Music"
+}
+
+# The Music variants are separate products to Connect IQ but identical displays, so they build from
+# the same source and their binaries are interchangeable with the plain ones. Only the two screen
+# sizes are handed over; naming the files for the screen rather than for four product ids keeps the
+# folder honest about what a person actually has to choose between.
+$aliases = [ordered]@{
+    "fr255m"  = "fr255"
+    "fr255sm" = "fr255s"
 }
 
 New-Item -ItemType Directory -Force -Path $bin, $store, $symbols | Out-Null
@@ -69,6 +80,16 @@ foreach ($device in $targets.Keys) {
 
     Copy-Item $out (Join-Path $store "$handoverName.prg") -Force
     Copy-Item "$out.debug.xml" (Join-Path $symbols "$handoverName.prg.debug.xml") -Force
+}
+
+# Compile the Music variants too. Nothing is staged from them — the handover file is the one named
+# for the screen — but a product listed in the manifest that has never been compiled is a product
+# nobody has checked.
+foreach ($alias in $aliases.Keys) {
+    Write-Host "Checking $alias ..." -NoNewline
+    & $monkeyc -f (Join-Path $root "monkey.jungle") -d $alias -o (Join-Path $bin "$alias.prg") -y $key -r -w
+    if ($LASTEXITCODE -ne 0) { throw "Build failed for $alias" }
+    Write-Host " ok" -ForegroundColor Green
 }
 
 # The store package: every supported device in one signed bundle, for upload to Connect IQ.
@@ -92,6 +113,59 @@ if (-not $SkipTests) {
     # The flag is /t, not -t: monkeydo takes Windows-style switches.
     & $monkeydo $tests fenix847mm /t
 }
+
+# WHICH-FILE.txt is generated rather than kept by hand, because it names the very files this script
+# produces. Written once by hand, it went stale the first time a device was added.
+$which = @"
+Market Sessions — sideloading
+=============================
+
+Built: $(Get-Date -Format 'yyyy-MM-dd')
+
+Everything in this folder is either copied to a watch or uploaded to the
+store. Nothing here is a build by-product — build.ps1 keeps it that way.
+
+Copy ONE .prg into  \GARMIN\APPS\  on the watch over USB. Nothing else goes
+on the device.
+
+  MarketSessions-tactix8-AMOLED-47mm-and-51mm.prg
+      tactix 8, both 47mm and 51mm. Glossy, vivid AMOLED screen.
+
+  MarketSessions-tactix8-SOLAR-51mm.prg
+      tactix 8 Solar only. Matte screen with a solar ring around the display.
+
+  MarketSessions-forerunner255-and-255-Music.prg
+      Forerunner 255 and 255 Music — the 46mm one.
+
+  MarketSessions-forerunner255s-and-255s-Music.prg
+      Forerunner 255S and 255S Music — the 41mm one.
+
+Both tactix models come in 51mm, so size does not tell them apart; the screen
+does. The two Forerunners are the other way round: same screen, different size.
+On any of them, Settings > System > About names the model outright.
+
+The Music editions take the same file as the plain ones. The display is
+identical and that is all the app cares about.
+
+MarketSessions.iq is for submitting to the Connect IQ store. It is not used
+for sideloading. The .png files are the store listing screenshots. Neither
+goes on a watch.
+
+On the watch: START on the glance opens the dial. From the dial, DOWN opens
+the scrolling list of every market, and BACK returns.
+
+Settings: a sideloaded app may never appear in Garmin Connect's settings
+list, so the theme and session colour are also on the watch — open the app
+and press MENU.
+
+Reinstalling: copy the new .prg over the old one, same name, same folder.
+Your theme and session colour survive the swap.
+
+If the app ever crashes on the watch, the log it leaves under
+\GARMIN\APPS\LOGS\ only names raw addresses. The symbol maps in ..\symbolsturn those into a file and a line number, and they only decode the build they
+were made with — so keep the pair together.
+"@
+Set-Content -Path (Join-Path $store "WHICH-FILE.txt") -Value $which -Encoding UTF8
 
 Write-Host ""
 Write-Host "Handover folder — these are the files you copy:" -ForegroundColor Cyan
