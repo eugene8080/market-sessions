@@ -44,8 +44,8 @@ module ThemeMenu {
     //! The menu itself, with the live theme marked.
     function build() as WatchUi.Menu2 {
         var menu = new WatchUi.Menu2({ :title => "Theme" });
-        var names = ["Iron", "Classic", "Ember"];
-        var blurbs = ["Slate and steel", "The original", "Warm copper"];
+        var names = ["Iron", "Cobalt", "Ember"];
+        var blurbs = ["Slate and steel", "Deep navy", "Burnt red"];
 
         for (var theme = 0; theme < Palette.THEME_COUNT; theme += 1) {
             menu.addItem(new WatchUi.MenuItem(

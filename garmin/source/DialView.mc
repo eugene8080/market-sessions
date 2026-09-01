@@ -41,9 +41,14 @@ class DialView extends WatchUi.View {
     //! Where the hands begin, and how far each reaches. Short hour hand, long minute hand, as on
     //! any watch — the hour hand is broad and red tipped so it still reads as the one pointing at
     //! a session, without having to be the long one to do it.
+    //!
+    //! The minute hand stops on the inner edge of the fourth band rather than at a fixed radius, so
+    //! it lands on the geometry wherever the stack happens to sit. Adding or merging a market moves
+    //! every band; a hand measured in design units would drift off them.
     private const HAND_PIVOT = 20.0;
     private const HOUR_HAND_TIP = 96.0;
-    private const MINUTE_HAND_TIP = 150.0;
+    private const MINUTE_HAND_BAND = 3;
+    private var _minuteHandTip as Float = 130.0;
 
     //! Segment counts for the two fades. Enough to read as continuous at this size, few enough
     //! that a redraw stays inside the watchdog — earlier cuts of this face used 48 and 14, plus a
@@ -124,6 +129,9 @@ class DialView extends WatchUi.View {
         var innermost = CARTOUCHE_RADIUS + CARTOUCHE_CLEARANCE + BAND_WIDTH / 2.0;
         var gaps = Markets.count() - 1;
         _bandStep = gaps > 0 ? (outermost - innermost) / gaps : 0.0;
+
+        // Inner edge of the fourth band in: its centre line, less half a band.
+        _minuteHandTip = BAND_OUTER - MINUTE_HAND_BAND * _bandStep - BAND_WIDTH;
 
         // Sized here because the market count cannot change without a rebuild.
         _windows = new Array<Number>[Markets.count() * 2];
@@ -339,7 +347,7 @@ class DialView extends WatchUi.View {
         var minutesIntoHour = minuteOfDay - (minuteOfDay.toNumber() / 60) * 60;
 
         // Minute hand first, so the hour hand — the one that points at a session — sits on top.
-        drawHand(dc, minutesIntoHour / 60.0 * 360.0, MINUTE_HAND_TIP, 3.0, 1.0,
+        drawHand(dc, minutesIntoHour / 60.0 * 360.0, _minuteHandTip, 4.5, 1.5,
             Palette.HAND, null);
         drawHand(dc, minuteOfDay / MINUTES_PER_DAY * 360.0, HOUR_HAND_TIP, 7.2, 2.4,
             Palette.HAND, Palette.ACCENT_HOT);

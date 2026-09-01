@@ -19,7 +19,7 @@ module Palette {
     //! Theme ids. These are the values stored in the `theme` property, so they are part of the
     //! app's saved state — append, never renumber.
     const IRON = 0;
-    const CLASSIC = 1;
+    const COBALT = 1;
     const EMBER = 2;
     const THEME_COUNT = 3;
 
@@ -40,12 +40,12 @@ module Palette {
     var RING_DAY as Number = 0x495C82;          //! and at noon
     var RING_TEXT as Number = 0xE9EEF8;
 
-    var OPEN_FROM as Number = 0x1F7F5C;         //! a trading session, at its open
-    var OPEN_TO as Number = 0x5FE8AC;           //! and at its close
+    var OPEN_FROM as Number = 0x8B1E1E;         //! a trading session, at its open
+    var OPEN_TO as Number = 0xFF6152;           //! and at its close
     var CLOSED_FROM as Number = 0x404A64;       //! a market waiting for its next session
     var CLOSED_TO as Number = 0x8B95B1;
 
-    var OPEN as Number = 0x41C391;              //! flat tones, where a fade would be lost:
+    var OPEN as Number = 0xE0483C;              //! flat tones, where a fade would be lost:
     var CLOSED as Number = 0x8F97B6;            //! the glance timeline, the hub's rim
 
     var ACCENT_HOT as Number = 0xF4522F;        //! the hour hand's tip, and nothing else
@@ -57,43 +57,44 @@ module Palette {
     //! Switch the face to a theme. Out of range falls back to Iron rather than throwing: the value
     //! arrives from saved settings, and a face that will not draw is worse than one drawn plainly.
     function apply(theme as Number) as Void {
-        if (theme == CLASSIC) {
-            // The palette the project started with: flat bands, no fades, a colder blue ground.
-            // Kept because it is what the web app and the widget still wear.
-            GROUND_CORE = 0x151821;
-            RING_NIGHT = 0x3C4761;
-            RING_DAY = 0x3C4761;
-            RING_TEXT = 0xEEF1F8;
-            OPEN_FROM = 0x41C391;
-            OPEN_TO = 0x41C391;
-            CLOSED_FROM = 0x8F97B6;
-            CLOSED_TO = 0x8F97B6;
-            OPEN = 0x41C391;
-            CLOSED = 0x8F97B6;
-            ACCENT_HOT = 0xEF6A5E;
-            HAND = 0xC3CBDF;
-            DIM = 0x6F7899;
-            TRACK = 0x2A3145;
-            current = CLASSIC;
+        if (theme == COBALT) {
+            // Blue: a deep navy ground with a genuinely blue ring rather than the blue-grey the
+            // project started with. Waiting markets are blue too, which leaves the red of a live
+            // session as the only warm thing on the face.
+            GROUND_CORE = 0x050A16;
+            RING_NIGHT = 0x123058;
+            RING_DAY = 0x255E9E;
+            RING_TEXT = 0xE6F0FF;
+            OPEN_FROM = 0x8B1E1E;
+            OPEN_TO = 0xFF6152;
+            CLOSED_FROM = 0x1F3C66;
+            CLOSED_TO = 0x5E86BE;
+            OPEN = 0xE0483C;
+            CLOSED = 0x5E86BE;
+            ACCENT_HOT = 0xFFB03A;
+            HAND = 0xD6E4F7;
+            DIM = 0x7391BC;
+            TRACK = 0x11223D;
+            current = COBALT;
 
         } else if (theme == EMBER) {
-            // Warm: a near-black brown ground and a copper ring. Sessions stay green, because green
-            // is the only colour on the face carrying meaning rather than mood, and a theme that
-            // recoloured it would be changing the data, not the styling.
-            GROUND_CORE = 0x0D0906;
-            RING_NIGHT = 0x37281B;
-            RING_DAY = 0x5E4229;
-            RING_TEXT = 0xF6ECE0;
-            OPEN_FROM = 0x1F7F5C;
-            OPEN_TO = 0x5FE8AC;
-            CLOSED_FROM = 0x4A3B2C;
-            CLOSED_TO = 0xA08D75;
-            OPEN = 0x41C391;
-            CLOSED = 0xA08D75;
-            ACCENT_HOT = 0xFF7A2F;
-            HAND = 0xEADBC8;
-            DIM = 0x9A8877;
-            TRACK = 0x2A1F16;
+            // Red: a near-black maroon ground under a ring that runs from dark blood to bright
+            // ember. The live sessions have to out-shout a warm face, so their gradient reaches
+            // further up into orange than it does on the cooler themes.
+            GROUND_CORE = 0x110503;
+            RING_NIGHT = 0x3E1109;
+            RING_DAY = 0x8C2A12;
+            RING_TEXT = 0xFFEDE4;
+            OPEN_FROM = 0xB82B12;
+            OPEN_TO = 0xFFA64F;
+            CLOSED_FROM = 0x46302A;
+            CLOSED_TO = 0xA48C80;
+            OPEN = 0xF2551F;
+            CLOSED = 0xA48C80;
+            ACCENT_HOT = 0xFFD98A;
+            HAND = 0xF2E2D6;
+            DIM = 0xA48C80;
+            TRACK = 0x2A1611;
             current = EMBER;
 
         } else {
@@ -101,13 +102,13 @@ module Palette {
             RING_NIGHT = 0x2C3854;
             RING_DAY = 0x495C82;
             RING_TEXT = 0xE9EEF8;
-            OPEN_FROM = 0x1F7F5C;
-            OPEN_TO = 0x5FE8AC;
+            OPEN_FROM = 0x8B1E1E;
+            OPEN_TO = 0xFF6152;
             CLOSED_FROM = 0x404A64;
             CLOSED_TO = 0x8B95B1;
-            OPEN = 0x41C391;
+            OPEN = 0xE0483C;
             CLOSED = 0x8F97B6;
-            ACCENT_HOT = 0xF4522F;
+            ACCENT_HOT = 0xFFB03A;
             HAND = 0xC9D3E4;
             DIM = 0x7E8AA6;
             TRACK = 0x222A3D;
