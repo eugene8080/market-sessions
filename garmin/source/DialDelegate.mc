@@ -21,7 +21,7 @@ class DialDelegate extends WatchUi.BehaviorDelegate {
     //! the route that works on a sideloaded app, where the Garmin Connect settings screen may
     //! never appear.
     function onMenu() as Boolean {
-        WatchUi.pushView(Settings.build(), new SettingsMenuDelegate(), WatchUi.SLIDE_UP);
+        WatchUi.pushView(SettingsMenu.build(), new SettingsMenuDelegate(), WatchUi.SLIDE_UP);
         return true;
     }
 }

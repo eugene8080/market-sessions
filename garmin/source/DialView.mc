@@ -50,11 +50,15 @@ class DialView extends WatchUi.View {
     private const MINUTE_HAND_BAND = 3;
     private var _minuteHandTip as Float = 130.0;
 
-    //! Segment counts for the two fades. Enough to read as continuous at this size, few enough
-    //! that a redraw stays inside the watchdog — earlier cuts of this face used 48 and 14, plus a
-    //! radial ground fade, and were killed mid-frame for running too long.
-    private const RING_STEPS = 30;
-    private const BAND_STEPS = 8;
+    //! Segment counts for the two fades.
+    //!
+    //! These are set by the watchdog, not by taste. The frame budget on this face is genuinely
+    //! tight and has been exceeded three times: first by a radial ground fade, then by 48/14
+    //! segments, and finally by numbering all twenty four hours — text is dear, and sixteen more
+    //! numerals cost more than the fades could spare at 30/8. Coarser fades bought them back, and
+    //! at this size the steps are not visible on the panel anyway.
+    private const RING_STEPS = 18;
+    private const BAND_STEPS = 6;
 
     private const MINUTES_PER_DAY = 1440;
 
@@ -86,6 +90,7 @@ class DialView extends WatchUi.View {
     private var _centerY as Number = 0;
 
     private var _hourLabelStep as Number = 3;
+    private var _clearRadius as Number = 1;
     private var _detailFont as FontDefinition = Graphics.FONT_XTINY;
     private var _hourFont as FontDefinition = Graphics.FONT_XTINY;
 
@@ -123,7 +128,12 @@ class DialView extends WatchUi.View {
         _scale = size / GRID;
         _centerX = dc.getWidth() / 2;
         _centerY = dc.getHeight() / 2;
-        _hourLabelStep = size >= 400 ? 3 : 6;
+        // Every hour is numbered on the big AMOLED panel: a 24 hour dial that counts in threes
+        // makes you do arithmetic to read the time off it. The 280 pixel MIP screens keep the
+        // three hour step, where twenty four numerals would be too small to tell apart. Twenty
+        // four numerals is not free — text is the most expensive thing on this face, and adding
+        // sixteen of them tripped the watchdog until the two fades were coarsened to pay for it.
+        _hourLabelStep = size >= 400 ? 1 : 3;
 
         var outermost = BAND_OUTER - BAND_WIDTH / 2.0;
         var innermost = CARTOUCHE_RADIUS + CARTOUCHE_CLEARANCE + BAND_WIDTH / 2.0;
@@ -132,6 +142,9 @@ class DialView extends WatchUi.View {
 
         // Inner edge of the fourth band in: its centre line, less half a band.
         _minuteHandTip = BAND_OUTER - MINUTE_HAND_BAND * _bandStep - BAND_WIDTH;
+
+        // The disc the summary text has to stay inside: the inner edge of the innermost band.
+        _clearRadius = px(innermost - BAND_WIDTH / 2.0);
 
         // Sized here because the market count cannot change without a rebuild.
         _windows = new Array<Number>[Markets.count() * 2];
@@ -408,11 +421,20 @@ class DialView extends WatchUi.View {
 
     //! The dial at the centre: how many markets are trading, which moves next, and when. Its rim
     //! is also the pivot the hands turn on, which is why it is drawn last — over the hand roots.
-    //! What moves next, printed on the face below the hub.
+    //! What moves next, and which way — two lines straddling the hub.
+    //!
+    //! It was one line, "ASX 25m", and that line was ambiguous in the way that mattered: it does
+    //! not say whether Sydney is twenty five minutes from opening or from closing, which is the
+    //! only thing the summary exists to tell you. Colouring it by direction was tried first and
+    //! is not enough — a colour reads as mood, and the reader has no reason to know the code.
+    //!
+    //! So the direction gets its own line. There is genuinely no room for it on the first one:
+    //! "ASX 25m" measures 127 pixels of a 134 pixel chord at FONT_XTINY, and FONT_XTINY is the
+    //! smallest font Garmin ships. The colour stays as well, now as reinforcement rather than as
+    //! the whole message.
     //!
     //! Drawn before the hands, so a hand crossing it simply covers it — no recess, no routing
-    //! around it. It is a line you read when you look for it, not one that has to survive being
-    //! looked at from any angle at any minute.
+    //! around it.
     private function drawReadout(dc as Dc, now as Number) as Void {
         var nextIndex = _aggregate[Sessions.SUMMARY_INDEX];
         var nextAt = _aggregate[Sessions.SUMMARY_AT];
@@ -420,15 +442,38 @@ class DialView extends WatchUi.View {
             return;
         }
 
-        var label = fit(dc, _detailFont, px(CARTOUCHE_RADIUS * 1.6), [
+        var aClose = _aggregate[Sessions.SUMMARY_IS_CLOSE] == 1;
+        var lineHeight = dc.getFontHeight(_detailFont);
+
+        // One line above the hub and one below, rather than both beneath it. The disc is widest
+        // across its middle, and stacking two lines under the hub pushes the lower one down to
+        // where the chord is about 80 pixels — too narrow for the word that has to go there.
+        var clearOfHub = px(HUB_RADIUS) + px(2.0);
+        var topRow = _centerY - clearOfHub - lineHeight;
+        var bottomRow = _centerY + clearOfHub;
+
+        var which = fit(dc, _detailFont, chordAt(_clearRadius, topRow, topRow + lineHeight), [
             Markets.CODES[nextIndex] + " " + Sessions.formatGap(nextAt - now),
             Markets.CODES[nextIndex] + " " + Sessions.formatGapCompact(nextAt - now),
+            Markets.CODES[nextIndex] + " " + Sessions.formatGapHours(nextAt - now),
             Sessions.formatGapCompact(nextAt - now)
         ] as Array<String>);
 
-        dc.setColor(Palette.DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(_centerX, _centerY + px(36.0), _detailFont, label,
-            Graphics.TEXT_JUSTIFY_CENTER);
+        // The direction, spelled out. It used to be carried only by the colour of the line above,
+        // which reads as decoration rather than information: shown "ASX 25m" you cannot tell
+        // whether Sydney is twenty five minutes from opening or from closing, and that is the one
+        // thing the summary exists to say. There is no room for it on the same line — "ASX 25m"
+        // is already 127 pixels of a 134 pixel chord — so it gets its own.
+        var direction = fit(dc, _detailFont,
+            chordAt(_clearRadius, bottomRow, bottomRow + lineHeight),
+            aClose ? ["to close", "close"] as Array<String>
+                   : ["to open", "open"] as Array<String>);
+
+        dc.setColor(Palette.RING_TEXT, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(_centerX, topRow, _detailFont, which, Graphics.TEXT_JUSTIFY_CENTER);
+
+        dc.setColor(aClose ? Palette.CLOSED_TO : Palette.OPEN_TO, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(_centerX, bottomRow, _detailFont, direction, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     //! The hub, over the roots of both hands the way a centre cap sits over a pinion.
