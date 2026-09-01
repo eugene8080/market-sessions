@@ -5,4 +5,10 @@
     <string id="ThemeIron">Iron</string>
     <string id="ThemeCobalt">Cobalt</string>
     <string id="ThemeEmber">Ember</string>
+
+    <string id="OpenColorTitle">Open sessions</string>
+    <string id="OpenRed">Red</string>
+    <string id="OpenGreen">Green</string>
+    <string id="OpenBlue">Blue</string>
+    <string id="OpenPurple">Purple</string>
 </strings>

@@ -8,4 +8,12 @@
     -->
     <property id="theme" type="number">0</property>
 
+    <!--
+        The colour a trading session is drawn in, kept separate from the theme because it is the
+        one thing on the face that carries meaning rather than mood.
+
+        0 Red, 1 Green, 2 Blue, 3 Purple.
+    -->
+    <property id="openColor" type="number">0</property>
+
 </properties>

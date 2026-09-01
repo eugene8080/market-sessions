@@ -23,6 +23,20 @@ module Palette {
     const EMBER = 2;
     const THEME_COUNT = 3;
 
+    //! The colour a trading session is drawn in. Separate from the theme because it is the one
+    //! thing on this face that means something rather than setting a mood — and because a warm
+    //! theme and a warm session colour are a combination worth being able to avoid.
+    //!
+    //! Saved state, like the theme ids: append, never renumber.
+    const OPEN_RED = 0;
+    const OPEN_GREEN = 1;
+    const OPEN_BLUE = 2;
+    const OPEN_PURPLE = 3;
+    const OPEN_COUNT = 4;
+
+    //! Which session colour is live.
+    var openChoice as Number = OPEN_RED;
+
     //! Bumped by `apply`, so anything caching derived colours can tell the theme moved.
     var generation as Number = 0;
 
@@ -65,11 +79,8 @@ module Palette {
             RING_NIGHT = 0x123058;
             RING_DAY = 0x255E9E;
             RING_TEXT = 0xE6F0FF;
-            OPEN_FROM = 0x8B1E1E;
-            OPEN_TO = 0xFF6152;
             CLOSED_FROM = 0x1F3C66;
             CLOSED_TO = 0x5E86BE;
-            OPEN = 0xE0483C;
             CLOSED = 0x5E86BE;
             ACCENT_HOT = 0xFFB03A;
             HAND = 0xD6E4F7;
@@ -85,11 +96,8 @@ module Palette {
             RING_NIGHT = 0x3E1109;
             RING_DAY = 0x8C2A12;
             RING_TEXT = 0xFFEDE4;
-            OPEN_FROM = 0xB82B12;
-            OPEN_TO = 0xFFA64F;
             CLOSED_FROM = 0x46302A;
             CLOSED_TO = 0xA48C80;
-            OPEN = 0xF2551F;
             CLOSED = 0xA48C80;
             ACCENT_HOT = 0xFFD98A;
             HAND = 0xF2E2D6;
@@ -102,11 +110,8 @@ module Palette {
             RING_NIGHT = 0x2C3854;
             RING_DAY = 0x495C82;
             RING_TEXT = 0xE9EEF8;
-            OPEN_FROM = 0x8B1E1E;
-            OPEN_TO = 0xFF6152;
             CLOSED_FROM = 0x404A64;
             CLOSED_TO = 0x8B95B1;
-            OPEN = 0xE0483C;
             CLOSED = 0x8F97B6;
             ACCENT_HOT = 0xFFB03A;
             HAND = 0xC9D3E4;
@@ -115,6 +120,34 @@ module Palette {
             current = IRON;
         }
 
+        applyOpen(openChoice);
+    }
+
+    //! Set the colour a trading session is drawn in.
+    //!
+    //! Each option has to hold up on all three grounds, so these are brighter than a single theme
+    //! would need. Two combinations are still weaker than the rest by their nature — blue sessions
+    //! on Cobalt, red on Ember — because a session cannot separate from a ground it matches.
+    function applyOpen(choice as Number) as Void {
+        if (choice == OPEN_GREEN) {
+            OPEN_FROM = 0x1B7A56;
+            OPEN_TO = 0x63EDB0;
+            OPEN = 0x41C391;
+        } else if (choice == OPEN_BLUE) {
+            OPEN_FROM = 0x184F9B;
+            OPEN_TO = 0x69BCFF;
+            OPEN = 0x3D93E8;
+        } else if (choice == OPEN_PURPLE) {
+            OPEN_FROM = 0x54269B;
+            OPEN_TO = 0xC095FF;
+            OPEN = 0x9463E6;
+        } else {
+            OPEN_FROM = 0x9E2318;
+            OPEN_TO = 0xFF6B58;
+            OPEN = 0xE8503F;
+        }
+
+        openChoice = choice < OPEN_COUNT && choice >= 0 ? choice : OPEN_RED;
         generation += 1;
     }
 

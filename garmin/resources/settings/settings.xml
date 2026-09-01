@@ -13,4 +13,13 @@
         </settingConfig>
     </setting>
 
+    <setting propertyKey="@Properties.openColor" title="@Strings.OpenColorTitle">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.OpenRed</listEntry>
+            <listEntry value="1">@Strings.OpenGreen</listEntry>
+            <listEntry value="2">@Strings.OpenBlue</listEntry>
+            <listEntry value="3">@Strings.OpenPurple</listEntry>
+        </settingConfig>
+    </setting>
+
 </settings>

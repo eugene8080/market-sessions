@@ -17,10 +17,11 @@ class DialDelegate extends WatchUi.BehaviorDelegate {
         return false;
     }
 
-    //! MENU opens the theme picker. This is the route that works on a sideloaded app, where the
-    //! Garmin Connect settings screen may never appear.
+    //! MENU opens the settings menu — theme, and the colour a live session is drawn in. This is
+    //! the route that works on a sideloaded app, where the Garmin Connect settings screen may
+    //! never appear.
     function onMenu() as Boolean {
-        WatchUi.pushView(ThemeMenu.build(), new ThemeMenuDelegate(), WatchUi.SLIDE_UP);
+        WatchUi.pushView(Settings.build(), new SettingsMenuDelegate(), WatchUi.SLIDE_UP);
         return true;
     }
 }
