@@ -43,7 +43,7 @@ To be certain, on any of them: **Settings → System → About**, and read the m
 
 ### 2. Download the one file for it
 
-From this repository's [**Releases**](../../releases) page, open **Market Sessions for Garmin
+From the repository's [**Releases**](https://github.com/eugene8080/market-sessions/releases) page, open **Market Sessions for Garmin
 (latest)** and download:
 
 | Your watch | File to download |

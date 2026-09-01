@@ -8,7 +8,7 @@ Live trading hours for the world's stock exchanges, as a 24 hour dial.
   [`android/README.md`](android/README.md) for how to build it without a desktop.
 - **Garmin watch app** — `garmin/`, a Connect IQ glance and 24 hour dial for the tactix 8 and the
   Forerunner 255.
-  **[Download it from Releases](../../releases)** and copy one file onto the watch; no build
+  **[Download it from Releases](https://github.com/eugene8080/market-sessions/releases)** and copy one file onto the watch; no build
   needed, and [`garmin/README.md`](garmin/README.md#install-it-on-your-watch) walks through it.
 
 Trading hours are written in each exchange's own local time in all three codebases, so daylight
