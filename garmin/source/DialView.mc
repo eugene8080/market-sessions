@@ -38,15 +38,12 @@ class DialView extends WatchUi.View {
     //! the innermost always lands outside the summary dial. Adding a market tightens the stack.
     private var _bandStep as Float = 6.0;
 
-    //! Where the hands begin — just clear of the summary dial's rim — and how far each reaches.
-    //!
-    //! The hour hand is the long one, which inverts the usual convention on purpose. On a face
-    //! where one revolution is a day, the hour hand is the only one pointing at anything: it says
-    //! where in the day you are, and which band you are standing in. The minute hand is along for
-    //! the ride, so it stays short and out of the bands.
+    //! Where the hands begin, and how far each reaches. Short hour hand, long minute hand, as on
+    //! any watch — the hour hand is broad and red tipped so it still reads as the one pointing at
+    //! a session, without having to be the long one to do it.
     private const HAND_PIVOT = 20.0;
-    private const HOUR_HAND_TIP = 150.0;
-    private const MINUTE_HAND_TIP = 116.0;
+    private const HOUR_HAND_TIP = 96.0;
+    private const MINUTE_HAND_TIP = 150.0;
 
     //! Segment counts for the two fades. Enough to read as continuous at this size, few enough
     //! that a redraw stays inside the watchdog — earlier cuts of this face used 48 and 14, plus a
@@ -164,8 +161,9 @@ class DialView extends WatchUi.View {
         drawGround(dc);
         drawRing(dc);
         drawBands(dc);
+        drawReadout(dc, now);
         drawHands(dc, now);
-        drawCartouche(dc, now);
+        drawHub(dc);
     }
 
     //! `count` colours stepping from `from` to `to`.
@@ -332,9 +330,9 @@ class DialView extends WatchUi.View {
         var minutesIntoHour = minuteOfDay - (minuteOfDay.toNumber() / 60) * 60;
 
         // Minute hand first, so the hour hand — the one that points at a session — sits on top.
-        drawHand(dc, minutesIntoHour / 60.0 * 360.0, MINUTE_HAND_TIP, 4.2, 1.3,
+        drawHand(dc, minutesIntoHour / 60.0 * 360.0, MINUTE_HAND_TIP, 3.0, 1.0,
             Palette.HAND, null);
-        drawHand(dc, minuteOfDay / MINUTES_PER_DAY * 360.0, HOUR_HAND_TIP, 7.2, 2.2,
+        drawHand(dc, minuteOfDay / MINUTES_PER_DAY * 360.0, HOUR_HAND_TIP, 7.2, 2.4,
             Palette.HAND, Palette.ACCENT_HOT);
     }
 
@@ -393,49 +391,44 @@ class DialView extends WatchUi.View {
 
     //! The dial at the centre: how many markets are trading, which moves next, and when. Its rim
     //! is also the pivot the hands turn on, which is why it is drawn last — over the hand roots.
-    private function drawCartouche(dc as Dc, now as Number) as Void {
-        var openCount = _aggregate[Sessions.SUMMARY_OPEN_COUNT];
+    //! What moves next, printed on the face below the hub.
+    //!
+    //! Drawn before the hands, so a hand crossing it simply covers it — no recess, no routing
+    //! around it. It is a line you read when you look for it, not one that has to survive being
+    //! looked at from any angle at any minute.
+    private function drawReadout(dc as Dc, now as Number) as Void {
         var nextIndex = _aggregate[Sessions.SUMMARY_INDEX];
         var nextAt = _aggregate[Sessions.SUMMARY_AT];
-
-        // The hub. It held the number of open markets until that turned out to be a fact nobody
-        // needed spelled out — the green bands already say how many are trading. What survives is
-        // the rim, which still carries open-or-shut in a colour readable across a room.
-        var radius = px(HUB_RADIUS);
-
-        dc.setColor(Palette.GROUND_CORE, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(_centerX, _centerY, radius);
-
-        dc.setColor(openCount > 0 ? Palette.OPEN : Palette.CLOSED, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(px(2.4));
-        dc.drawCircle(_centerX, _centerY, radius);
-
         if (nextIndex == Sessions.NONE || nextAt == Sessions.NONE) {
             return;
         }
 
-        // What moves next, below the hub, in a recess the hands pass behind.
-        //
-        // Laid straight onto the face this line got cut in half by the minute hand every hour. A
-        // watch has solved that for a century: the date window is a hole in the dial, and the hand
-        // goes under it. Same here — the plate is drawn after the hands, so the arm disappears
-        // behind it and comes out the other side.
         var label = fit(dc, _detailFont, px(CARTOUCHE_RADIUS * 1.6), [
             Markets.CODES[nextIndex] + " " + Sessions.formatGap(nextAt - now),
             Markets.CODES[nextIndex] + " " + Sessions.formatGapCompact(nextAt - now),
             Sessions.formatGapCompact(nextAt - now)
         ] as Array<String>);
 
-        var y = _centerY + px(36.0);
-        var width = dc.getTextWidthInPixels(label, _detailFont);
-        var height = dc.getFontHeight(_detailFont);
-        var padX = px(7.0);
+        dc.setColor(Palette.DIM, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(_centerX, _centerY + px(36.0), _detailFont, label,
+            Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
+    //! The hub, over the roots of both hands the way a centre cap sits over a pinion.
+    //!
+    //! It held the number of open markets until that turned out to be a fact nobody needed spelled
+    //! out — the green bands already say how many are trading. What survives is the rim, which
+    //! still carries open-or-shut in a colour readable across a room.
+    private function drawHub(dc as Dc) as Void {
+        var radius = px(HUB_RADIUS);
 
         dc.setColor(Palette.GROUND_CORE, Graphics.COLOR_TRANSPARENT);
-        dc.fillRoundedRectangle(_centerX - width / 2 - padX, y, width + 2 * padX, height, px(5.0));
+        dc.fillCircle(_centerX, _centerY, radius);
 
-        dc.setColor(Palette.DIM, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(_centerX, y, _detailFont, label, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.setColor(_aggregate[Sessions.SUMMARY_OPEN_COUNT] > 0 ? Palette.OPEN : Palette.CLOSED,
+            Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(px(2.4));
+        dc.drawCircle(_centerX, _centerY, radius);
     }
 
     //! How wide a line of text may be to stay inside the summary dial. The binding constraint is
