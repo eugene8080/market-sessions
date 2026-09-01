@@ -120,7 +120,7 @@ nav svg{width:26px; height:26px; stroke:currentColor; fill:none; stroke-width:1.
 
 .hourlabel{fill:var(--ring-text); font-size:11px; font-weight:600}
 .ticklabel{fill:var(--tick); font-size:7.5px}
-.bandlabel{fill:#fff; font-size:6px; font-weight:700; letter-spacing:.55px}
+.bandlabel{fill:#fff; font-weight:700}
 [data-theme="dark"] .bandlabel{fill:#0e1116}
 .grid{stroke:var(--hair); stroke-width:.7}
 </style>
@@ -251,6 +251,19 @@ function tzLabel(){
 
 /* ---------- dial ---------- */
 const C=200, R_BAND_OUT=157, BAND=7.2, STEP=9.0;
+
+/* Band labels are deliberately taller than the 7.2 band they sit on: at 6px they were legible on
+   a desktop and not on a phone. Spilling a little into the gap either side costs nothing, because
+   a neighbouring band only collides where the two sessions overlap in the day AND both labels sit
+   at the same angle, which they never do — each label is centred on its own session. */
+const LABEL_SIZE=8.5, LABEL_TRACK=.7;
+
+/* Roughly how wide a label will render. SVG cannot measure text before it is laid out, so this
+   estimates from the glyph count; 0.62em is about right for bold uppercase in the system stack.
+   It only has to be good enough to decide whether a name fits its arc at all. */
+function labelWidth(text){
+  return text.length*LABEL_SIZE*.62 + (text.length-1)*LABEL_TRACK;
+}
 const polar=(r,deg)=>{const a=(deg-90)*Math.PI/180; return [C+r*Math.cos(a), C+r*Math.sin(a)];};
 function arc(r,d0,d1,rev){
   if(rev){const [x0,y0]=polar(r,d1),[x1,y1]=polar(r,d0);return `M${x0} ${y0} A${r} ${r} 0 ${d1-d0>180?1:0} 0 ${x1} ${y1}`;}
@@ -283,9 +296,21 @@ function renderBands(sess){
     if(d1<=d0) d1+=360;
     const col = sess[i].cur ? 'var(--open)' : 'var(--closed)';
     out += `<path d="${arc(r,d0,d1)}" stroke="${col}" stroke-width="${BAND}" fill="none"/>`;
-    const mid = ((d0+d1)/2)%360, rev = mid>180;
-    out += `<path id="lp${i}" d="${arc(r,d0,d1,rev)}" fill="none"/>`;
-    out += `<text class="bandlabel" dominant-baseline="central"><textPath href="#lp${i}" startOffset="50%" text-anchor="middle">${mk.n.toUpperCase()}</textPath></text>`;
+    /* Text laid along an arc reads upside down through the whole bottom half of the dial, not
+       merely past the 6 o'clock mark, so the path is reversed for any label centred between 3 and
+       9 o'clock. The old test of mid>180 flipped only half the range that needed it — which is why
+       Tokyo through Mumbai read upside down — and wrongly flipped the upper left, where Toronto
+       and New York sit. This is the same condition DialRenderer.kt has always used. */
+    const name = mk.n.toUpperCase();
+    const mid = ((d0+d1)/2)%360, rev = mid>90 && mid<270;
+    const arcLen = (d1-d0)/360*2*Math.PI*r;
+
+    /* A name longer than its own arc would spill past both ends and be clipped mid-word. Drop it
+       instead: the band still reads by colour and position, and a half word reads as a bug. */
+    if(arcLen > labelWidth(name)+4){
+      out += `<path id="lp${i}" d="${arc(r,d0,d1,rev)}" fill="none"/>`;
+      out += `<text class="bandlabel" font-size="${LABEL_SIZE}" letter-spacing="${LABEL_TRACK}" dominant-baseline="central"><textPath href="#lp${i}" startOffset="50%" text-anchor="middle">${name}</textPath></text>`;
+    }
   });
   document.getElementById('bands').innerHTML = out;
 }
