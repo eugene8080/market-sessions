@@ -20,17 +20,19 @@ data class DialTheme(
     val ringText: Int,
     val closed: Int,
     val hand: Int,
+    /** The hour hand's tip, and nothing else. */
+    val accent: Int,
     val open: Int,
 ) {
     companion object {
         /** Ground palettes, keyed by the same names the web app's picker uses. */
         private val GROUNDS = mapOf(
             "iron" to intArrayOf(0xFF070910.toInt(), 0xFF3A4866.toInt(), 0xFFE9EEF8.toInt(),
-                0xFF8B95B1.toInt(), 0xFFC9D3E4.toInt()),
+                0xFF8B95B1.toInt(), 0xFFC9D3E4.toInt(), 0xFFFFB03A.toInt()),
             "cobalt" to intArrayOf(0xFF050A16.toInt(), 0xFF1D4A80.toInt(), 0xFFE6F0FF.toInt(),
-                0xFF5E86BE.toInt(), 0xFFD6E4F7.toInt()),
+                0xFF5E86BE.toInt(), 0xFFD6E4F7.toInt(), 0xFFFFB03A.toInt()),
             "ember" to intArrayOf(0xFF110503.toInt(), 0xFF6A2010.toInt(), 0xFFFFEDE4.toInt(),
-                0xFFA48C80.toInt(), 0xFFF2E2D6.toInt()),
+                0xFFA48C80.toInt(), 0xFFF2E2D6.toInt(), 0xFFFFD98A.toInt()),
         )
 
         private val SESSIONS = mapOf(
@@ -55,7 +57,7 @@ data class DialTheme(
             val p = prefs(context)
             val ground = GROUNDS[p.getString(GROUND_KEY, DEFAULT_GROUND)] ?: GROUNDS.getValue(DEFAULT_GROUND)
             val open = SESSIONS[p.getString(SESSION_KEY, DEFAULT_SESSION)] ?: SESSIONS.getValue(DEFAULT_SESSION)
-            return DialTheme(ground[0], ground[1], ground[2], ground[3], ground[4], open)
+            return DialTheme(ground[0], ground[1], ground[2], ground[3], ground[4], ground[5], open)
         }
 
         /**

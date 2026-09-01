@@ -42,6 +42,7 @@ class DialRenderer(
         ringText = 0xFFE9EEF8.toInt(),
         closed = 0xFF8B95B1.toInt(),
         hand = 0xFFC9D3E4.toInt(),
+        accent = 0xFFFFB03A.toInt(),
         open = 0xFFE8503F.toInt(),
     ),
 ) {
@@ -57,6 +58,11 @@ class DialRenderer(
         const val BAND_OUTER = 157f
         const val BAND_WIDTH = 7.2f
         const val BAND_STEP = 9f
+
+        const val HAND_PIVOT = 20f
+        const val HOUR_TIP = 96f
+        const val HUB_RADIUS = 18f
+        const val MINUTE_TIP = BAND_OUTER - 3 * BAND_STEP - BAND_WIDTH
     }
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -172,25 +178,78 @@ class DialRenderer(
         )
     }
 
+    /**
+     * Hands, matching the Garmin dial: tapered rather than drawn as lines, a short broad hour hand
+     * with a warm tip and a long thin minute hand.
+     *
+     * Each is drawn three times — a dark shoulder a shade wider than the hand, so it separates from
+     * whatever band it is lying over; the body; and, on the hour hand only, the last fifth in the
+     * accent. A second flash of colour on the minute hand would be decoration on a hand that is
+     * along for the ride.
+     */
     private fun hands(canvas: Canvas, now: Instant) {
         val minutes = minuteOfDay(now)
 
-        stroke.color = theme.hand
-        stroke.strokeCap = Paint.Cap.ROUND
+        hand(canvas, minutes % 60f / 60f * 360f, MINUTE_TIP, 4.5f, 1.5f, theme.hand, null)
+        hand(canvas, minutes / 1440f * 360f, HOUR_TIP, 7.2f, 2.4f, theme.hand, theme.accent)
 
-        stroke.strokeWidth = 5.5f
-        hand(canvas, minutes / 1440f * 360f, 118f)
-
-        stroke.strokeWidth = 4f
-        hand(canvas, minutes % 60f / 60f * 360f, 146f)
-
-        fill.color = theme.hand
-        canvas.drawCircle(CENTER, CENTER, 8f, fill)
+        // The hub caps the roots of both hands.
+        fill.color = theme.ground
+        canvas.drawCircle(CENTER, CENTER, HUB_RADIUS, fill)
+        stroke.color = theme.open
+        stroke.strokeWidth = 2.4f
+        stroke.strokeCap = Paint.Cap.BUTT
+        canvas.drawCircle(CENTER, CENTER, HUB_RADIUS, stroke)
     }
 
-    private fun hand(canvas: Canvas, degrees: Float, length: Float) {
-        val tip = polar(length, degrees)
-        canvas.drawLine(CENTER, CENTER, tip.x, tip.y, stroke)
+    private fun hand(
+        canvas: Canvas,
+        degrees: Float,
+        tip: Float,
+        halfBase: Float,
+        halfTip: Float,
+        body: Int,
+        tipColour: Int?,
+    ) {
+        taper(canvas, degrees, HAND_PIVOT, tip, halfBase + 1.1f, halfTip + 1.1f, theme.ground)
+        taper(canvas, degrees, HAND_PIVOT, tip, halfBase, halfTip, body)
+
+        if (tipColour != null) {
+            val shoulder = tip - (tip - HAND_PIVOT) * 0.2f
+            taper(canvas, degrees, shoulder, tip, halfBase * 0.45f, halfTip, tipColour)
+        }
+    }
+
+    private fun taper(
+        canvas: Canvas,
+        degrees: Float,
+        from: Float,
+        to: Float,
+        halfFrom: Float,
+        halfTo: Float,
+        colour: Int,
+    ) {
+        val radians = Math.toRadians((degrees - 90f).toDouble())
+        val alongX = Math.cos(radians).toFloat()
+        val alongY = Math.sin(radians).toFloat()
+        val acrossX = -alongY
+        val acrossY = alongX
+
+        val baseX = CENTER + alongX * from
+        val baseY = CENTER + alongY * from
+        val tipX = CENTER + alongX * to
+        val tipY = CENTER + alongY * to
+
+        val path = Path().apply {
+            moveTo(baseX + acrossX * halfFrom, baseY + acrossY * halfFrom)
+            lineTo(tipX + acrossX * halfTo, tipY + acrossY * halfTo)
+            lineTo(tipX - acrossX * halfTo, tipY - acrossY * halfTo)
+            lineTo(baseX - acrossX * halfFrom, baseY - acrossY * halfFrom)
+            close()
+        }
+
+        fill.color = colour
+        canvas.drawPath(path, fill)
     }
 
     private fun ovalAt(radius: Float) =
