@@ -18,6 +18,76 @@ IBKR's contract database, not written from memory; several are not what you woul
 Store submission copy — including the disclaimer and why it is worded the way it is — lives in
 [`store-listing.md`](store-listing.md).
 
+## Install it on your watch
+
+**You do not need to build anything.** The two files below are prebuilt.
+
+You need a computer with a USB port and the cable that came with the watch. A phone will not do —
+the watch has to appear as a drive, and it only does that on a computer.
+
+### 1. Work out which watch you have
+
+Both models come in 51mm, so the size does not tell them apart. **The screen does:**
+
+| Your watch | Screen |
+| --- | --- |
+| **tactix 8** (AMOLED) | glossy and vivid, like a phone screen |
+| **tactix 8 Solar** | matte, and there is a faint ring around the edge of the display |
+
+To be certain, on the watch: **Settings → System → About**, and read the model name.
+
+### 2. Download the one file for it
+
+From this repository's [**Releases**](../../releases) page, open **Market Sessions for Garmin
+(latest)** and download:
+
+| Your watch | File to download |
+| --- | --- |
+| tactix 8 (AMOLED), 47mm or 51mm | `MarketSessions-tactix8-AMOLED-47mm-and-51mm.prg` |
+| tactix 8 Solar 51mm | `MarketSessions-tactix8-SOLAR-51mm.prg` |
+
+Download **one**. Putting both on the watch does not give you a choice of anything; it gives you the
+app twice.
+
+### 3. Copy it onto the watch
+
+1. Plug the watch into the computer with its USB cable.
+2. It appears as a device — on Windows, in **File Explorer** under *This PC*, named after the watch.
+   On a Mac you need Garmin's free **Android File Transfer** or **Garmin Express** to see it.
+3. Open **Internal Storage → GARMIN → APPS**.
+4. Drag the `.prg` file into that folder. That is the whole installation.
+5. Eject the watch and unplug it.
+
+Nothing else goes on the device — not the `.iq` file, not the screenshots.
+
+### 4. Find it on the watch
+
+Market Sessions lives in the **glance carousel**: from the watch face, press **DOWN** to scroll
+through your glances and it is one of them. Press **START** on it to open the full dial.
+
+If it is not there, the watch has not added it to your carousel yet. Hold **MENU** on the watch face,
+find **Glances**, and add *Market Sessions* to the list.
+
+Once you are on the dial:
+
+| Press | Does |
+| --- | --- |
+| **DOWN** | the scrolling list of every exchange and its hours |
+| **MENU** | colour theme, and the colour open sessions are drawn in |
+| **BACK** | back one screen, and out of the app |
+
+### Updating it later
+
+Download the new file and drop it into `GARMIN\APPS\` over the old one — same name, same folder.
+Your theme and colour choices survive.
+
+### If it does not appear
+
+- **Check the folder.** It must be `GARMIN\APPS\`, not `GARMIN\` and not a folder you made.
+- **Check you took the right file.** The Solar build will not run on the AMOLED watch or the other
+  way round; it simply will not show up.
+- **Restart the watch** — hold the top-left button until it powers down, then again to start it.
+
 ## Devices
 
 Garmin ships the tactix line under the equivalent fēnix part numbers, so the two product ids in
@@ -33,7 +103,12 @@ On the Solar's MIP panel every colour snaps to Garmin's fixed 64 entry palette, 
 lands nearer teal than mint. The contrast the dial actually trades on survives; the AMOLED gets the
 web app's colours exactly.
 
-## Building
+## Building it yourself
+
+Everything below is for building from source. If you just want the app on your watch, the section
+above is all you need.
+
+### Requirements
 
 Needs the Connect IQ SDK (9.2.0 or later), a JDK, and a developer key. With the SDK's `bin` on
 `PATH`:
@@ -43,7 +118,15 @@ monkeyc -f monkey.jungle -d fenix847mm -o bin/MarketSessions.prg -y ~/.garmin-ke
 monkeydo bin/MarketSessions.prg fenix847mm
 ```
 
-## Sideloading
+On Windows, [`build.ps1`](build.ps1) does the whole thing — both devices, the store package, the
+unit tests — and stages `bin/store/` with only the files a person actually hands over. The compiler
+drops a `.prg.debug.xml`, a `-settings.json` and three directories of intermediates beside whatever
+`-o` points at, which is why the two are kept apart.
+
+Keep the symbol maps it writes to `bin/symbols/`. They are what turns an address in a crash log off
+the watch into a file and a line number, and they only decode the build they were made with.
+
+## Sideloading a build you made yourself
 
 Copy **one** `.prg` into `\GARMIN\APPS\` on the watch over USB. Nothing else goes on the device —
 there is no documented way to sideload settings, which is why the theme picker is also on the watch
