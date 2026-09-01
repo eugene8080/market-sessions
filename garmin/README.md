@@ -77,9 +77,35 @@ twice a year. It is therefore checked two ways:
   monkeydo bin/test.prg fenix847mm /t
   ```
 
-Public holidays are not modelled and weekends are closed — the same simplifications the web app and
-the Android widget make. Keeping all three wrong in the same way is deliberate; they are meant to
-agree with each other.
+## Holidays
+
+Weekends are a rule the watch can compute. Holidays are not — Lunar New Year and Diwali move with
+lunar calendars, Easter with its own, and exchanges add one-off closures for national mourning or
+systems testing. So they are tabulated in [`source/Holidays.mc`](source/Holidays.mc), generated from
+each exchange's published calendar by
+[`tools/generate_holidays.py`](../tools/generate_holidays.py):
+
+```sh
+pip install pandas_market_calendars
+python tools/generate_holidays.py
+```
+
+**The table has an edge and the watch respects it.** An exchange publishes only a year or so ahead;
+when this was last generated, neither Shanghai nor Mumbai had a 2027 calendar in existence. Each
+market therefore records the last year it is good for in `LAST_COVERED_YEAR`, and beyond that no
+holidays are applied rather than wrong ones. Re-run the generator when calendars are published.
+
+Two bands are not a single exchange's calendar. **Shanghai** is reached over Stock Connect, which
+settles through Hong Kong, so it takes the union of both — erring towards closed, which never shows
+a market open that cannot be traded. **Europe** stands for five exchanges, so it takes the
+intersection: 1 May shows as trading, which is right, because London is.
+
+Midday breaks are still not modelled — Tokyo, Hong Kong and Shanghai each shut for lunch and are
+drawn as trading straight through. Neither are half days: an exchange closing early is still open,
+and the dial has no way to show it.
+
+Holidays are a Garmin-only feature. The web app and the Android widget still treat every weekday as
+a trading day.
 
 ## Layout
 
@@ -91,6 +117,7 @@ agree with each other.
 | `source/MarketSessionsGlanceView.mc` | The glance strip |
 | `source/DialView.mc` | The 24 hour dial |
 | `source/Palette.mc` | The web app's dark theme |
+| `source/Holidays.mc` | Generated exchange holiday table |
 | `source/ZonesTest.mc` | Run No Evil tests |
 
 Everything the glance needs carries the `(:glance)` annotation, which is what keeps the glance build
