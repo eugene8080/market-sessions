@@ -377,4 +377,31 @@ module ZonesTest {
         }
         return true;
     }
+
+    //! The market list builds, and builds one row per market.
+    //!
+    //! The list is reached with a DOWN press, and **synthetic input does not reach the simulator
+    //! from a non-interactive session**, so the button itself cannot be exercised here. What can be
+    //! is the part that would actually break: constructing the list resolves every market through
+    //! `Sessions.stateOf` up front — eleven calendar searches — and formats a row from each. A
+    //! market table that had grown, or a state array read with the wrong index, would throw here
+    //! rather than on the watch.
+    (:test)
+    function marketListBuilds(logger as Logger) as Boolean {
+        var list = new MarketList();
+
+        // One item per market. The title is passed as `:title` and is not an item, which this test
+        // got wrong first time round and is the reason it says so here.
+        var count = Markets.count();
+        if (list.getItem(count - 1) == null) {
+            logger.error(Lang.format("market list holds fewer than $1$ rows", [count]));
+            return false;
+        }
+        if (list.getItem(count) != null) {
+            logger.error("market list holds more rows than there are markets");
+            return false;
+        }
+        return true;
+    }
+
 }
