@@ -11,8 +11,8 @@ disclaimer in particular stays reviewed rather than improvised.
 | Name | Market Sessions |
 | Type | Watch App |
 | Price | Free |
-| Devices | Populated from `manifest.xml` — fēnix 8 47/51mm and fēnix 8 Solar 51mm, which is what covers the tactix 8 |
-| Screenshots | `bin/store/store-glance-454.png`, `bin/store/store-dial-454.png` |
+| Devices | Populated from `manifest.xml` — fēnix 8 47/51mm and fēnix 8 Solar 51mm, which is what covers the tactix 8, plus Forerunner 255/255S and their Music editions |
+| Screenshots | `bin/store/store-glance-454.png`, `bin/store/store-dial-454.png`, `bin/store/store-list-454.png` |
 | Package | `bin/store/MarketSessions.iq` |
 
 ## Description
