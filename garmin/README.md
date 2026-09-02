@@ -116,7 +116,7 @@ The Forerunner is not simply a smaller tactix, and three differences shaped the 
 - **No `enhancedGraphicSupport`**, so `Graphics.getVectorFont` does not exist and both the dial's
   hour numerals and the market list fall back to system fonts. The fallback was written when the
   vector font went in and had never actually run until this device was added.
-- **A slower processor** running the same drawing. Resolving all eleven markets in one frame tripped
+- **A slower processor** running the same drawing. Resolving every market in one frame tripped
   the watchdog here while fitting comfortably on the tactix, which is what forced the early exit in
   `Sessions.stateOf` — see below.
 - **Four levels per channel** on its 8 bit panel, so colours snap to a coarse grid: the ring's
@@ -190,7 +190,7 @@ session starts after now is also the point past which nothing can change — eve
 later still, so none of them can be the session containing now either. Both answers are settled, and
 the loop has nothing left to learn.
 
-Walking all sixteen days regardless cost the Forerunner 255 its frame: eleven markets times eighteen
+Walking all sixteen days regardless cost the Forerunner 255 its frame: every market times eighteen
 days of daylight saving arithmetic, done twice a market, tripped the watchdog on a processor slower
 than the one this was written on. The tactix 8 absorbed it. The usual answer is one or two days
 away, and now costs one or two days.

@@ -77,6 +77,32 @@ class DialView extends WatchUi.View {
 
     private const MINUTES_PER_DAY = 1440;
 
+    //! Where a band's name sits, in degrees along its own arc from the market's open.
+    //!
+    //! The bands are about ten pixels apart and the names are drawn far larger than that, so every
+    //! name bleeds across its neighbours — which is the point, since a name confined to its own
+    //! band would be too small to read. What stops them landing on top of each other is that each
+    //! is walked along its own arc until it clears the ones already placed.
+    //!
+    //! This started as a fixed stagger — each band's name a further twenty six degrees round the
+    //! face than the one outside it — and that failed exactly where it mattered. The offset has to
+    //! be clamped into the band's own arc so the name sits on the colour it names, and Hong Kong's
+    //! six and a half hours are too short to hold the offset its position asked for. Clamping put
+    //! it back where Singapore already was: the two ended up eight degrees apart, overlapping.
+    //! An offset that has to be clamped is not a stagger, so the placement tests rather than
+    //! assumes.
+    private const LABEL_STEP = 4.0;
+    private const LABEL_ARC_PAD = 9.0;
+    private const LABEL_SIZE = 17.0;
+
+    //! Clearance around a name, on top of its own measured box.
+    //!
+    //! Design units like everything else, but with a floor in real pixels: five units is six pixels
+    //! on the tactix and three on a 218 pixel Forerunner, and three is not a gap — the codes came
+    //! out touching, so "SEHKNTL SEHK" read as one word.
+    private const LABEL_GAP = 7.0;
+    private const LABEL_GAP_MIN = 4;
+
     //! Colour ramps, resolved once in `onLayout`. Interpolating inside the draw loop meant a few
     //! hundred float operations per redraw for values that never change between frames.
     private var _ringRamp as Array<Number> = [] as Array<Number>;
@@ -89,7 +115,7 @@ class DialView extends WatchUi.View {
     // ---------------------------------------------------------------------------------------
     // Session cache.
     //
-    // Resolving eleven markets means several hundred daylight saving and holiday lookups, and none
+    // Resolving every market means several hundred daylight saving and holiday lookups, and none
     // of it changes until some market actually opens or closes. So it is done once and held until
     // that moment — which turns the expensive part of a redraw from every fifteen seconds into
     // roughly twice an hour.
@@ -99,6 +125,10 @@ class DialView extends WatchUi.View {
     private var _aggregate as Array<Number> = [] as Array<Number>;
     private var _windows as Array<Number> = [] as Array<Number>;
     private var _isOpen as Array<Number> = [] as Array<Number>;
+
+    //! Where each band's name goes, in degrees. Solved with the sessions in `refresh`, because it
+    //! depends only on where the arcs are and those hold until the next transition.
+    private var _labelAt as Array<Float> = [] as Array<Float>;
 
     private var _scale as Float = 1.0;
     private var _centerX as Number = 0;
@@ -110,6 +140,7 @@ class DialView extends WatchUi.View {
     // Widened from FontDefinition because `hourFont` may hand back a VectorFont, which is a
     // different branch of Graphics.FontType.
     private var _hourFont as FontType = Graphics.FONT_XTINY;
+    private var _labelFont as FontType = Graphics.FONT_XTINY;
 
     private var _ticker as Timer.Timer?;
 
@@ -166,6 +197,7 @@ class DialView extends WatchUi.View {
         // Sized here because the market count cannot change without a rebuild.
         _windows = new Array<Number>[Markets.count() * 2];
         _isOpen = new Array<Number>[Markets.count()];
+        _labelAt = new Array<Float>[Markets.count()];
         _validUntil = -1;
 
         // The readout takes a vector font for the same reason the numerals do, and for one more:
@@ -174,6 +206,7 @@ class DialView extends WatchUi.View {
         // when something happens without saying what. A smaller font clears it with room to spare.
         _detailFont = sizedFont(px(READOUT_SIZE));
         _hourFont = sizedFont((px(RING_WIDTH) * HOUR_FONT_FILL).toNumber());
+        _labelFont = sizedFont(px(LABEL_SIZE));
 
         buildRamps();
     }
@@ -236,7 +269,7 @@ class DialView extends WatchUi.View {
             buildRamps();
         }
 
-        refresh(now);
+        refresh(dc, now);
         drawGround(dc);
         drawRing(dc);
         drawBands(dc);
@@ -259,7 +292,7 @@ class DialView extends WatchUi.View {
     //! Nothing on this face changes between transitions: a band's arc, its colour and the summary
     //! all hold until some market opens or closes. Holding them until that instant is what keeps
     //! the redraw inside the watchdog now that the face is drawn in a few hundred segments.
-    private function refresh(now as Number) as Void {
+    private function refresh(dc as Dc, now as Number) as Void {
         if (_validUntil != -1 && now < _validUntil && _aggregate.size() > 0) {
             return;
         }
@@ -288,6 +321,8 @@ class DialView extends WatchUi.View {
             }
         }
 
+        placeLabels(dc);
+
         _aggregate = [openCount, soonestIndex, soonestAt, soonestIsClose] as Array<Number>;
 
         // Recompute at the next transition. With no transition to wait for — which should not
@@ -304,7 +339,7 @@ class DialView extends WatchUi.View {
     //! This was a radial fade, drawn as concentric filled discs from the rim inwards, because
     //! Connect IQ has no gradient primitive. It cost the app its life: twenty two fills of a
     //! 454 pixel disc is about four and a half million pixel writes, and the watchdog killed the
-    //! frame every time. Everything else on this face put together — the ring, eleven faded bands,
+    //! frame every time. Everything else on this face put together — the ring, the faded bands,
     //! the hands — is under a tenth of that.
     //!
     //! A buffered bitmap would buy the fade back by drawing it once, but a full screen buffer is
@@ -353,6 +388,160 @@ class DialView extends WatchUi.View {
 
     //! One band per market, outermost first, each faded from its open to its close. Reads the
     //! sessions `refresh` resolved rather than resolving them again.
+    //! Choose where each band's name sits, once per transition.
+    //!
+    //! Each name is walked along its own arc in `LABEL_STEP` degree increments and takes the first
+    //! position whose box clears every name already placed. Boxes, not distances: the codes differ
+    //! in width by a factor of three — `SGX` against `SEHKNTL` — so a single separation radius is
+    //! either too small for the long ones or too generous for the short ones.
+    //!
+    //! Bands are walked outermost first, so when a position genuinely cannot be found, the name
+    //! that has to settle for its least-bad spot is an inner one, where the arcs are shorter and
+    //! there was least room to begin with.
+    private function placeLabels(dc as Dc) as Void {
+        var height = dc.getFontHeight(_labelFont);
+        var gap = px(LABEL_GAP);
+        if (gap < LABEL_GAP_MIN) {
+            gap = LABEL_GAP_MIN;
+        }
+
+        // Names already placed, as [centreX, centreY, halfWidth, halfHeight] each — plus one more
+        // slot for the summary in the middle of the face.
+        var placed = new Array<Number>[(Markets.count() + 1) * 4];
+
+        // The summary is seeded as though it were a name already placed, so the bands avoid it. It
+        // is not optional and it is not on an arc, so it goes in first and never moves. Without it
+        // the innermost band — the one whose arc passes closest to the centre — put its name
+        // straight through the readout on the smaller screens.
+        //
+        // The box is the summary's *text*, not the disc it sits in. Reserving the whole disc was
+        // the obvious first try and it was far too greedy: at 91 pixels of half width it walled off
+        // most of the two innermost arcs, and Europe and Singapore — whose long sessions make them
+        // the last to be placed — were left with nowhere legal to go and went unnamed on a screen
+        // with room to spare.
+        var summaryLine = dc.getFontHeight(_detailFont);
+        var summaryTop = _centerY - px(HUB_RADIUS) - px(2.0) - summaryLine;
+        placed[0] = _centerX;
+        placed[1] = _centerY;
+        placed[2] = chordAt(_clearRadius, summaryTop, summaryTop + summaryLine) / 2;
+        placed[3] = px(HUB_RADIUS) + px(2.0) + summaryLine;
+        var count = 1;
+
+        // Shortest arc first, not outermost first.
+        //
+        // A name can only go on its own band, so a market with a short session has few places to
+        // put one and a market with a long session has many. Placing in band order let Sydney's
+        // ninety degrees take a spot Shanghai's eighty two needed, and Shanghai — having nowhere
+        // else to be — went unnamed while Sydney had the rest of its arc free. Giving the most
+        // constrained band the first pick is what fits all nine on the tactix.
+        var order = arcOrder();
+
+        for (var slot = 0; slot < order.size(); slot += 1) {
+            var i = order[slot];
+            var start = _windows[i * 2];
+            var end = _windows[i * 2 + 1];
+            if (start == Sessions.NONE || end == Sessions.NONE) {
+                _labelAt[i] = -1.0;
+                continue;
+            }
+
+            var from = Sessions.displayMinuteOfDay(start) / MINUTES_PER_DAY * 360.0;
+            var to = Sessions.displayMinuteOfDay(end) / MINUTES_PER_DAY * 360.0;
+            var sweep = to - from;
+            if (sweep <= 0) {
+                sweep += 360.0;         // the session straddles local midnight
+            }
+
+            var radius = BAND_OUTER - i * _bandStep - BAND_WIDTH / 2.0;
+            var halfWidth = dc.getTextWidthInPixels(Markets.CODES[i], _labelFont) / 2 + gap;
+            var halfHeight = height / 2 + gap;
+
+            var usable = sweep - 2 * LABEL_ARC_PAD;
+            if (usable < 0) {
+                usable = 0.0;
+            }
+
+            var found = -1.0;
+
+            for (var step = 0.0; step <= usable && found < 0.0; step += LABEL_STEP) {
+                var angle = from + LABEL_ARC_PAD + step;
+                if (isClear(placed, count,
+                        polarX(radius, angle), polarY(radius, angle), halfWidth, halfHeight)) {
+                    found = LABEL_ARC_PAD + step;
+                }
+            }
+
+            // Nowhere clear: leave this band unnamed rather than print two codes on top of each
+            // other. The whole point of walking the arc is that names do not overlap, and a face
+            // reading "SEHKNTLASX" has failed at that more completely than a missing name does —
+            // it is not merely unhelpful, it is unreadable, and it makes its neighbour unreadable
+            // too. Nine names will not fit legibly on a 218 pixel screen; the market list, one
+            // button away, has room for all of them.
+            if (found < 0.0) {
+                _labelAt[i] = -1.0;
+                continue;
+            }
+
+            var chosen = normalise(from + found);
+            _labelAt[i] = chosen;
+
+            placed[count * 4] = polarX(radius, chosen);
+            placed[count * 4 + 1] = polarY(radius, chosen);
+            placed[count * 4 + 2] = halfWidth;
+            placed[count * 4 + 3] = halfHeight;
+            count += 1;
+        }
+    }
+
+    //! Market indices ordered by how much arc they have to put a name on, tightest first.
+    //!
+    //! An insertion sort, because nine markets is nine and the array is rebuilt only when a session
+    //! changes. A market with no session at all sorts last: it has no arc, no name to place, and no
+    //! claim on anyone else's room.
+    private function arcOrder() as Array<Number> {
+        var count = Markets.count();
+        var order = new Array<Number>[count];
+        var sweeps = new Array<Float>[count];
+
+        for (var i = 0; i < count; i += 1) {
+            order[i] = i;
+            var start = _windows[i * 2];
+            var end = _windows[i * 2 + 1];
+            if (start == Sessions.NONE || end == Sessions.NONE) {
+                sweeps[i] = 999.0;
+                continue;
+            }
+            var sweep = Sessions.displayMinuteOfDay(end) / MINUTES_PER_DAY * 360.0
+                - Sessions.displayMinuteOfDay(start) / MINUTES_PER_DAY * 360.0;
+            sweeps[i] = sweep <= 0 ? sweep + 360.0 : sweep;
+        }
+
+        for (var i = 1; i < count; i += 1) {
+            var value = order[i];
+            var key = sweeps[value];
+            var j = i - 1;
+            while (j >= 0 && sweeps[order[j]] > key) {
+                order[j + 1] = order[j];
+                j -= 1;
+            }
+            order[j + 1] = value;
+        }
+        return order;
+    }
+
+    //! Does a box at this position touch anything already placed?
+    private function isClear(placed as Array<Number>, count as Number,
+            x as Number, y as Number, halfWidth as Number, halfHeight as Number) as Boolean {
+        for (var j = 0; j < count; j += 1) {
+            var apart = (placed[j * 4] - x).abs() >= placed[j * 4 + 2] + halfWidth
+                || (placed[j * 4 + 1] - y).abs() >= placed[j * 4 + 3] + halfHeight;
+            if (!apart) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private function drawBands(dc as Dc) as Void {
         dc.setPenWidth(px(BAND_WIDTH));
 
@@ -365,6 +554,31 @@ class DialView extends WatchUi.View {
 
             var radius = BAND_OUTER - i * _bandStep - BAND_WIDTH / 2.0;
             drawSession(dc, radius, start, end, _isOpen[i] == 1);
+        }
+
+        drawBandLabels(dc);
+    }
+
+    //! The venue codes, over the bands they name.
+    //!
+    //! Drawn after every band so a name is never buried under the arc of the band inside it, and
+    //! in the ring's text colour rather than the session colour: the arc already carries open or
+    //! shut, and a name that changed colour with it would be saying the same thing twice while
+    //! being harder to read against its own background.
+    private function drawBandLabels(dc as Dc) as Void {
+        dc.setColor(Palette.RING_TEXT, Graphics.COLOR_TRANSPARENT);
+
+        for (var i = 0; i < Markets.count(); i += 1) {
+            if (_labelAt[i] < 0.0) {
+                continue;
+            }
+            var radius = BAND_OUTER - i * _bandStep - BAND_WIDTH / 2.0;
+            dc.drawText(
+                polarX(radius, _labelAt[i]),
+                polarY(radius, _labelAt[i]),
+                _labelFont,
+                Markets.CODES[i],
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
     }
 
@@ -419,7 +633,7 @@ class DialView extends WatchUi.View {
 
     //! One tapered hand, drawn as a keyline polygon with a narrower coloured one on top.
     //!
-    //! The keyline is what lets a hand cross eleven bands of arbitrary colour and stay a hand. The
+    //! The keyline is what lets a hand cross a stack of bands of arbitrary colour and stay a hand. The
     //! tip takes the warm accent on both hands, which ties them together and puts the eye on the
     //! end that is doing the pointing.
     private function drawHand(dc as Dc, degrees as Float, tip as Float, halfBase as Float,

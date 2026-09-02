@@ -57,18 +57,21 @@ SEARCH_FORWARD_DAYS = 16
 #:               is the safe direction: it never shows a market open that cannot be traded.
 #:   Europe    — one band standing for five exchanges, so it is only shut when all five are. Taking
 #:               the intersection means 1 May shows as trading, which is right: London is.
+#:   North      — the same, for Toronto, New York and Nasdaq. The intersection matters more here
+#:   America      than it looks: the three share a session to the minute but not a calendar, so
+#:                Canada Day closes Toronto while New York trades, and Thanksgiving and
+#:                Independence Day close New York while Toronto trades. A union would shut the band
+#:                on all of them and show the continent closed on days it is open.
 MARKETS = [
-    ("Sydney",    ["XASX"],  "union"),
-    ("Tokyo",     ["XTKS"],  "union"),
-    ("Taipei",    ["XTAI"],  "union"),
-    ("Singapore", ["XSES"],  "union"),
-    ("Hong Kong", ["XHKG"],  "union"),
-    ("Shanghai",  ["XSHG", "XHKG"], "union"),
-    ("Mumbai",    ["XNSE"],  "union"),
-    ("Europe",    ["XLON", "XETR", "XSWX", "XPAR", "XAMS"], "intersection"),
-    ("Toronto",   ["XTSE"],  "union"),
-    ("New York",  ["XNYS"],  "union"),
-    ("NASDAQ",    ["NASDAQ"], "union"),
+    ("Sydney",        ["XASX"],  "union"),
+    ("Tokyo",         ["XTKS"],  "union"),
+    ("Taipei",        ["XTAI"],  "union"),
+    ("Singapore",     ["XSES"],  "union"),
+    ("Hong Kong",     ["XHKG"],  "union"),
+    ("Shanghai",      ["XSHG", "XHKG"], "union"),
+    ("Mumbai",        ["XNSE"],  "union"),
+    ("Europe",        ["XLON", "XETR", "XSWX", "XPAR", "XAMS"], "intersection"),
+    ("North America", ["XTSE", "XNYS", "NASDAQ"], "intersection"),
 ]
 
 
@@ -149,7 +152,7 @@ def main() -> int:
         print(f"  {name:11} {len(days):3} closures through {last_covered}, longest gap {gap}d")
 
     # Flatten into one array with per-market start offsets, the same shape Markets.SPEC uses. One
-    # array of numbers costs far less on the watch than eleven separate ones.
+    # array of numbers costs far less on the watch than one per market.
     flat, offsets = [], []
     for _, days in rows:
         offsets.append(len(flat))

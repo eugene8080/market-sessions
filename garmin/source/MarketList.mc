@@ -7,7 +7,7 @@ import Toybox.WatchUi;
 
 //! The scrollable list of every market, reached from the dial with DOWN or a swipe up.
 //!
-//! The dial answers "what is happening now" at a glance and deliberately says nothing else — eleven
+//! The dial answers "what is happening now" at a glance and deliberately says nothing else — nine
 //! arcs and one summary line. This is the other half: every market, when its session runs, and how
 //! long until that session changes, in a form you read rather than glance at.
 //!
@@ -199,7 +199,7 @@ class MarketList extends WatchUi.CustomMenu {
 //! The heading that stays put while the rows scroll under it.
 //!
 //! Handed the count rather than working it out, because `draw` runs on every scroll frame and
-//! counting means eleven more calendar searches.
+//! counting means one more calendar search per market.
 class MarketListTitle extends WatchUi.Drawable {
 
     private var _openCount as Number;
@@ -230,7 +230,7 @@ class MarketListTitle extends WatchUi.Drawable {
 //! 400 of usable row — so a line that is too long is **clipped to the row and scrolled**, the way
 //! the stock ticker scrolls a fund name too long for its width.
 //!
-//! Only the focused row scrolls. Animating eleven rows at twelve frames a second to move text
+//! Only the focused row scrolls. Animating every row at twelve frames a second to move text
 //! nobody is reading is a flat battery, and the focused row is the one being read.
 //!
 //! The verb stays. "SEHK 2h10m" does not say whether Hong Kong is two hours from opening or from
@@ -250,7 +250,7 @@ class MarketRow extends WatchUi.CustomMenuItem {
     //! Everything is turned into a string here, once. `Sessions.stateOf` walks up to eighteen
     //! calendar days per market and is why the dial caches its answers between transitions; a
     //! CustomMenuItem's `draw` runs on every scroll frame — and now on every marquee frame too — so
-    //! resolving there would run that search eleven times a frame.
+    //! resolving there would run that search once per market, every frame.
     function initialize(index as Number, state as Array<Number>, now as Number) {
         CustomMenuItem.initialize(index, {});
 

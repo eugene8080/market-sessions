@@ -199,33 +199,67 @@ module ZonesTest {
 
     //! A published holiday must actually close the market, and the next session must step over it.
     //!
-    //! 3 July 2026 is the NYSE's observed Independence Day — the 4th falls on a Saturday — so the
-    //! market is shut on the Friday and does not trade again until Monday the 6th.
+    //! Good Friday, 3 April 2026, is the case to use for North America: it is one of the few days
+    //! Toronto, New York and Nasdaq are all shut, so it closes the band. Trading resumes on Monday
+    //! the 6th.
     (:test)
     function holidaysCloseTheMarket(logger as Logger) as Boolean {
-        var newYork = indexOf("New York");
-        if (newYork == -1) {
-            logger.error("New York is missing from the market table");
+        var america = indexOf("North America");
+        if (america == -1) {
+            logger.error("North America is missing from the market table");
             return false;
         }
 
-        var duringThursday = 1783006200;   // 2026-07-02 12:00 New York, an ordinary session
-        var duringFriday = 1783094400;     // 2026-07-03 12:00 New York, Independence Day observed
-        var mondayOpens = 1783344600;      // 2026-07-06 09:30 New York
+        var duringThursday = 1775145600;   // 2026-04-02 12:00 ET, an ordinary session
+        var goodFriday = 1775232000;       // 2026-04-03 12:00 ET, shut on both sides of the border
+        var mondayOpens = 1775482200;      // 2026-04-06 09:30 ET
 
-        if (Sessions.stateOf(newYork, duringThursday)[Sessions.STATE_IS_OPEN] != 1) {
-            logger.error("New York reported shut on an ordinary Thursday");
+        if (Sessions.stateOf(america, duringThursday)[Sessions.STATE_IS_OPEN] != 1) {
+            logger.error("North America reported shut on an ordinary Thursday");
             return false;
         }
 
-        var holiday = Sessions.stateOf(newYork, duringFriday);
+        var holiday = Sessions.stateOf(america, goodFriday);
         if (holiday[Sessions.STATE_IS_OPEN] != 0) {
-            logger.error("New York reported open on Independence Day");
+            logger.error("North America reported open on Good Friday");
             return false;
         }
         if (holiday[Sessions.STATE_TRANSITION] != mondayOpens) {
-            logger.error(Lang.format("next New York open = $1$, expected $2$ (Monday the 6th)",
+            logger.error(Lang.format("next North American open = $1$, expected $2$ (Monday the 6th)",
                 [holiday[Sessions.STATE_TRANSITION], mondayOpens]));
+            return false;
+        }
+        return true;
+    }
+
+    //! A region band is shut only when every exchange in it is shut.
+    //!
+    //! This is the whole reason `generate_holidays.py` intersects the three North American
+    //! calendars instead of unioning them, and it is worth a test because the safe-looking choice
+    //! is the wrong one here. Unioning is right for Shanghai, where the band cannot be traded
+    //! unless both Shanghai and Hong Kong are open; it is wrong for a region, where the band stands
+    //! for whichever of its exchanges is trading.
+    //!
+    //! The two days that separate the choices are the national holidays either side of the border:
+    //! Canada Day closes Toronto while New York trades, and Independence Day does the reverse. A
+    //! unioned table would show the continent shut on both.
+    (:test)
+    function regionBandsFollowWhicheverExchangeIsOpen(logger as Logger) as Boolean {
+        var america = indexOf("North America");
+        if (america == -1) {
+            logger.error("North America is missing from the market table");
+            return false;
+        }
+
+        var canadaDay = 1782921600;        // 2026-07-01 12:00 ET — Toronto shut, New York trading
+        var independenceDay = 1783094400;  // 2026-07-03 12:00 ET — New York shut, Toronto trading
+
+        if (Sessions.stateOf(america, canadaDay)[Sessions.STATE_IS_OPEN] != 1) {
+            logger.error("North America reported shut on Canada Day, but New York trades");
+            return false;
+        }
+        if (Sessions.stateOf(america, independenceDay)[Sessions.STATE_IS_OPEN] != 1) {
+            logger.error("North America reported shut on Independence Day, but Toronto trades");
             return false;
         }
         return true;
@@ -383,7 +417,7 @@ module ZonesTest {
     //! The list is reached with a DOWN press, and **synthetic input does not reach the simulator
     //! from a non-interactive session**, so the button itself cannot be exercised here. What can be
     //! is the part that would actually break: constructing the list resolves every market through
-    //! `Sessions.stateOf` up front — eleven calendar searches — and formats a row from each. A
+    //! `Sessions.stateOf` up front — one calendar search per market — and formats a row from each. A
     //! market table that had grown, or a state array read with the wrong index, would throw here
     //! rather than on the watch.
     (:test)
