@@ -142,6 +142,12 @@ class DialView extends WatchUi.View {
     private var _hourFont as FontType = Graphics.FONT_XTINY;
     private var _labelFont as FontType = Graphics.FONT_XTINY;
 
+    //! The band names follow their arcs when the device can draw curved text, and sit flat when it
+    //! cannot. `drawRadialText` needs a scalable font and both arrived in API 4.2.2, so the tactix
+    //! has them and the Forerunner 255 has neither — there its names are drawn level, which is what
+    //! they were before this and reads perfectly well on a screen that small.
+    private var _curvedLabels as Boolean = false;
+
     private var _ticker as Timer.Timer?;
 
     //! Nothing here moves faster than a minute — the hour hand creeps a quarter of a degree per
@@ -206,7 +212,9 @@ class DialView extends WatchUi.View {
         // when something happens without saying what. A smaller font clears it with room to spare.
         _detailFont = sizedFont(px(READOUT_SIZE));
         _hourFont = sizedFont((px(RING_WIDTH) * HOUR_FONT_FILL).toNumber());
-        _labelFont = sizedFont(px(LABEL_SIZE));
+        var curved = vectorFont(px(LABEL_SIZE));
+        _curvedLabels = curved != null && (dc has :drawRadialText);
+        _labelFont = curved != null ? curved : Graphics.FONT_XTINY;
 
         buildRamps();
     }
@@ -226,17 +234,24 @@ class DialView extends WatchUi.View {
     //! anyway — a device without it falls back to the system font, which is merely the old look,
     //! not a blank dial.
     private function sizedFont(pixels as Number) as FontType {
-        if (!(Graphics has :getVectorFont)) {
-            return Graphics.FONT_XTINY;
-        }
+        var font = vectorFont(pixels);
+        // A face the device does not carry returns null rather than substituting one.
+        return font != null ? font : Graphics.FONT_XTINY;
+    }
 
-        var font = Graphics.getVectorFont({
+    //! The same font, but null rather than a substitute when the device has no scalable fonts.
+    //!
+    //! Kept separate because `drawRadialText` takes a `VectorFont` specifically — curved text and
+    //! scalable fonts arrived together in API 4.2.2 and a device has both or neither. Knowing which
+    //! font came back is what decides whether the band names can follow their arcs.
+    private function vectorFont(pixels as Number) as VectorFont or Null {
+        if (!(Graphics has :getVectorFont)) {
+            return null;
+        }
+        return Graphics.getVectorFont({
             :face => ["RobotoCondensedRegular", "RobotoRegular"],
             :size => pixels
         });
-
-        // A face the device does not carry returns null rather than substituting one.
-        return font != null ? font : Graphics.FONT_XTINY;
     }
 
     //! The colour ramps, and the generation they came from.
@@ -572,13 +587,40 @@ class DialView extends WatchUi.View {
             if (_labelAt[i] < 0.0) {
                 continue;
             }
+
             var radius = BAND_OUTER - i * _bandStep - BAND_WIDTH / 2.0;
-            dc.drawText(
-                polarX(radius, _labelAt[i]),
-                polarY(radius, _labelAt[i]),
-                _labelFont,
-                Markets.CODES[i],
-                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            var at = _labelAt[i];
+
+            if (!_curvedLabels) {
+                dc.drawText(
+                    polarX(radius, at), polarY(radius, at), _labelFont, Markets.CODES[i],
+                    Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+                continue;
+            }
+
+            // Text that follows the band it names. `drawRadialText` measures angles the way
+            // `drawArc` does — counter-clockwise from three o'clock — so the dial's own convention
+            // of clockwise from midnight is converted here exactly as `drawArcBetween` converts it.
+            //
+            // Direction decides which way up the letters sit. Reading clockwise puts their feet on
+            // the inside of the arc, which is right across the top of the face and upside down
+            // across the bottom; counter-clockwise is the mirror. So each name takes whichever
+            // keeps it upright for where it sits.
+            //
+            // **The changeover is at the horizontal, not the bottom.** A name flips when it passes
+            // three o'clock and nine o'clock — the points where it stands on end and is equally
+            // wrong either way — not when it passes six. Splitting at 180 leaves everything in the
+            // lower left quadrant inverted, which is exactly the bug the web app and the Android
+            // widget each shipped once before: the same `> 180` written for the same reason, fixed
+            // the same way, and written a third time here. The test is which half of the face the
+            // name is on, and the face is halved by the horizontal.
+            var lowerHalf = at > 90.0 && at < 270.0;
+            dc.drawRadialText(
+                _centerX, _centerY, _labelFont, Markets.CODES[i],
+                Graphics.TEXT_JUSTIFY_CENTER,
+                normalise(90.0 - at), px(radius),
+                lowerHalf ? Graphics.RADIAL_TEXT_DIRECTION_COUNTER_CLOCKWISE
+                          : Graphics.RADIAL_TEXT_DIRECTION_CLOCKWISE);
         }
     }
 
