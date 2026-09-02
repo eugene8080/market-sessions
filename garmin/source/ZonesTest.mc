@@ -204,9 +204,9 @@ module ZonesTest {
     //! the 6th.
     (:test)
     function holidaysCloseTheMarket(logger as Logger) as Boolean {
-        var america = indexOf("North America");
+        var america = indexOf("N.America");
         if (america == -1) {
-            logger.error("North America is missing from the market table");
+            logger.error("N.America is missing from the market table");
             return false;
         }
 
@@ -245,9 +245,9 @@ module ZonesTest {
     //! unioned table would show the continent shut on both.
     (:test)
     function regionBandsFollowWhicheverExchangeIsOpen(logger as Logger) as Boolean {
-        var america = indexOf("North America");
+        var america = indexOf("N.America");
         if (america == -1) {
-            logger.error("North America is missing from the market table");
+            logger.error("N.America is missing from the market table");
             return false;
         }
 
@@ -260,6 +260,34 @@ module ZonesTest {
         }
         if (Sessions.stateOf(america, independenceDay)[Sessions.STATE_IS_OPEN] != 1) {
             logger.error("North America reported shut on Independence Day, but Toronto trades");
+            return false;
+        }
+
+        // Tokyo and Seoul are the sharper case. The two keep the same hours to the minute, so the
+        // band exists as one arc only because of geometry — but its calendar is the whole reason
+        // the choice matters. Japan closed 36 weekdays in 2026 and Korea 29, and they agreed on
+        // three. Intersecting leaves seven closures across two years; unioning would have left
+        // more than sixty, and all but a handful would have been wrong.
+        var asia = indexOf("Tokyo/Seoul");
+        if (asia == -1) {
+            logger.error("Tokyo/Seoul is missing from the market table");
+            return false;
+        }
+
+        var showaDay = 1777431600;             // 2026-04-29 12:00 JST — Japan shut, Korea trading
+        var independenceMovement = 1772420400; // 2026-03-02 12:00 KST — Korea shut, Japan trading
+        var childrensDay = 1777950000;         // 2026-05-05 12:00 — a holiday in both countries
+
+        if (Sessions.stateOf(asia, showaDay)[Sessions.STATE_IS_OPEN] != 1) {
+            logger.error("Tokyo/Seoul reported shut on Showa Day, but Korea trades");
+            return false;
+        }
+        if (Sessions.stateOf(asia, independenceMovement)[Sessions.STATE_IS_OPEN] != 1) {
+            logger.error("Tokyo/Seoul reported shut on 1 March, but Japan trades");
+            return false;
+        }
+        if (Sessions.stateOf(asia, childrensDay)[Sessions.STATE_IS_OPEN] != 0) {
+            logger.error("Tokyo/Seoul reported open on Children's Day, shut in both countries");
             return false;
         }
         return true;

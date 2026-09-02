@@ -77,12 +77,12 @@ class DialView extends WatchUi.View {
 
     private const MINUTES_PER_DAY = 1440;
 
-    //! Where a band's name sits, in degrees along its own arc from the market's open.
+    //! Where a band's name sits, in degrees clockwise from midnight.
     //!
-    //! The bands are about ten pixels apart and the names are drawn far larger than that, so every
-    //! name bleeds across its neighbours — which is the point, since a name confined to its own
-    //! band would be too small to read. What stops them landing on top of each other is that each
-    //! is walked along its own arc until it clears the ones already placed.
+    //! The bands are about nine pixels apart and the names are drawn at twice that, so every name
+    //! bleeds across its neighbours — which is the point, since a name confined to its own band
+    //! would be too small to read. What stops them landing on top of each other is that each is
+    //! walked outwards from the middle of its own arc until it clears the ones already placed.
     //!
     //! This started as a fixed stagger — each band's name a further twenty six degrees round the
     //! face than the one outside it — and that failed exactly where it mattered. The offset has to
@@ -100,8 +100,18 @@ class DialView extends WatchUi.View {
     //! Design units like everything else, but with a floor in real pixels: five units is six pixels
     //! on the tactix and three on a 218 pixel Forerunner, and three is not a gap — the codes came
     //! out touching, so "SEHKNTL SEHK" read as one word.
-    private const LABEL_GAP = 7.0;
-    private const LABEL_GAP_MIN = 4;
+    private const LABEL_GAP = 5.0;
+    private const LABEL_GAP_MIN = 3;
+
+    //! How much of the font's height the letters actually occupy.
+    //!
+    //! `getFontHeight` returns the line box, which carries leading above the caps and room below
+    //! the baseline for descenders. None of the band names has a descender and the leading is empty
+    //! by definition, so reserving the full line box makes every name about a third taller than it
+    //! looks — and on a stack where neighbouring bands are nine pixels apart and the names are
+    //! twice that, a third is the difference between a name fitting and being dropped. Hong Kong
+    //! sits between Singapore and Shanghai and was the one that kept losing.
+    private const LABEL_INK = 0.72;
 
     //! Colour ramps, resolved once in `onLayout`. Interpolating inside the draw loop meant a few
     //! hundred float operations per redraw for values that never change between frames.
@@ -468,21 +478,38 @@ class DialView extends WatchUi.View {
             }
 
             var radius = BAND_OUTER - i * _bandStep - BAND_WIDTH / 2.0;
-            var halfWidth = dc.getTextWidthInPixels(Markets.CODES[i], _labelFont) / 2 + gap;
-            var halfHeight = height / 2 + gap;
+            var halfWidth = dc.getTextWidthInPixels(Markets.NAMES[i], _labelFont) / 2 + gap;
+            var halfHeight = (height * LABEL_INK).toNumber() / 2 + gap;
 
-            var usable = sweep - 2 * LABEL_ARC_PAD;
-            if (usable < 0) {
-                usable = 0.0;
+            // Search outwards from the middle of the arc, not along it from the open.
+            //
+            // A name belongs in the middle of the band it names: that is where it is furthest from
+            // both ends and reads as a label rather than as a marker for the moment the market
+            // opens. Starting at the open put every name at the same end of every arc, which both
+            // crowded them together — the Asian sessions all start within twenty degrees — and said
+            // something the dial does not mean.
+            //
+            // So the midpoint is tried first and the walk alternates either side of it, taking the
+            // nearest position to the middle that is clear.
+            var middle = sweep / 2.0;
+            var reach = middle - LABEL_ARC_PAD;
+            if (reach < 0) {
+                reach = 0.0;
             }
 
             var found = -1.0;
 
-            for (var step = 0.0; step <= usable && found < 0.0; step += LABEL_STEP) {
-                var angle = from + LABEL_ARC_PAD + step;
-                if (isClear(placed, count,
-                        polarX(radius, angle), polarY(radius, angle), halfWidth, halfHeight)) {
-                    found = LABEL_ARC_PAD + step;
+            for (var out = 0.0; out <= reach && found < 0.0; out += LABEL_STEP) {
+                for (var side = 0; side < 2 && found < 0.0; side += 1) {
+                    if (side == 1 && out == 0.0) {
+                        continue;       // the midpoint itself is one position, not two
+                    }
+                    var offset = side == 0 ? middle + out : middle - out;
+                    var angle = from + offset;
+                    if (isClear(placed, count,
+                            polarX(radius, angle), polarY(radius, angle), halfWidth, halfHeight)) {
+                        found = offset;
+                    }
                 }
             }
 
@@ -593,7 +620,7 @@ class DialView extends WatchUi.View {
 
             if (!_curvedLabels) {
                 dc.drawText(
-                    polarX(radius, at), polarY(radius, at), _labelFont, Markets.CODES[i],
+                    polarX(radius, at), polarY(radius, at), _labelFont, Markets.NAMES[i],
                     Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
                 continue;
             }
@@ -616,7 +643,7 @@ class DialView extends WatchUi.View {
             // name is on, and the face is halved by the horizontal.
             var lowerHalf = at > 90.0 && at < 270.0;
             dc.drawRadialText(
-                _centerX, _centerY, _labelFont, Markets.CODES[i],
+                _centerX, _centerY, _labelFont, Markets.NAMES[i],
                 Graphics.TEXT_JUSTIFY_CENTER,
                 normalise(90.0 - at), px(radius),
                 lowerHalf ? Graphics.RADIAL_TEXT_DIRECTION_COUNTER_CLOCKWISE

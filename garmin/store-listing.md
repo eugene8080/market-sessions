@@ -23,12 +23,14 @@ disclaimer in particular stays reviewed rather than improvised.
 > full dial: one band per session, green while it trades and grey while it waits, on a face where
 > one revolution is a whole day — midnight at the top, noon at the bottom.
 >
-> Nine bands: Sydney, Tokyo, Taipei, Singapore, Hong Kong, Shanghai, Mumbai, Europe and North
-> America. Europe stands for London, Frankfurt, Zurich, Paris and Amsterdam, and North America for
-> Toronto, New York and Nasdaq — each group opens and closes at the same instant, so on a dial they
-> would be arcs drawn on top of each other. Trading hours are held in each exchange's own local
-> time, so daylight saving is handled automatically wherever you are, and published exchange
-> holidays are built in.
+> Nine bands, each named on the dial: Sydney, Tokyo/Seoul, Taipei, Singapore, Hong Kong, Shanghai,
+> Mumbai, Europe and N.America. Three of those stand for more than one exchange — Europe for London,
+> Frankfurt, Zurich, Paris and Amsterdam; N.America for Toronto, New York and Nasdaq; Tokyo/Seoul
+> for Japan and Korea — because each group keeps the same hours to the minute and on a dial would be
+> arcs drawn on top of each other. Their holidays are not shared, and a grouped band is only shut
+> when every exchange in it is. Trading hours are held in each exchange's own local time, so
+> daylight saving is handled automatically wherever you are, and published exchange holidays are
+> built in.
 >
 > No account, no network, no permissions. It reads the clock and nothing else.
 >

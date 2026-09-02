@@ -12,6 +12,12 @@ import Toybox.Lang;
 //! Midday breaks are not modelled — Tokyo, Hong Kong and Shanghai each shut for lunch and are
 //! drawn here as trading straight through.
 //!
+//! **Tokyo and Seoul are one band.** Japan and Korea keep the same offset and the same hours to
+//! the minute, so drawn separately they were two concentric arcs of identical extent — the same
+//! coincidence that put Toronto, New York and Nasdaq together. What they do not share is a
+//! calendar, and the holiday table carries that: the band is shut only when both are, so Japan's
+//! holidays leave it open on Korea's account and Korea's leave it open on Japan's.
+//!
 //! **Europe is one band here and five markets everywhere else.** London, Frankfurt, Zurich, Paris
 //! and Amsterdam open and close at the same instant to the second, all year: London trades an hour
 //! earlier by its own clock and sits an hour behind CET, and the UK and EU move their clocks
@@ -46,14 +52,14 @@ module Markets {
     //! Full names, for the dial and the wide glance.
     var NAMES as Array<String> = [
         "Sydney",
-        "Tokyo",
+        "Tokyo/Seoul",
         "Taipei",
         "Singapore",
         "Hong Kong",
         "Shanghai",
         "Mumbai",
         "Europe",
-        "North America"
+        "N.America"
     ] as Array<String>;
 
     //! Short codes, for anywhere the full name will not fit.
@@ -68,7 +74,7 @@ module Markets {
     //! Watch the two Toronto/Tokyo lookalikes: TSE is Toronto and TSEJ is Tokyo.
     var CODES as Array<String> = [
         "ASX",       // Australian Securities Exchange
-        "TSEJ",      // Tokyo Stock Exchange
+        "TSEJ/KSE",  // Tokyo Stock Exchange and Korea Exchange — one session, see below
         "TWSE",      // Taiwan Stock Exchange
         "SGX",       // Singapore Exchange
         "SEHK",      // Stock Exchange of Hong Kong
@@ -86,7 +92,7 @@ module Markets {
     var SPEC as Array<Number> = [
         //  offset  rule                open          close
              600,   Zones.RULE_AU,     10 * 60,       16 * 60,        // Sydney       AEST/AEDT
-             540,   Zones.RULE_NONE,    9 * 60,       15 * 60 + 30,   // Tokyo        JST
+             540,   Zones.RULE_NONE,    9 * 60,       15 * 60 + 30,   // Tokyo/Seoul  JST=KST
              480,   Zones.RULE_NONE,    9 * 60,       13 * 60 + 30,   // Taipei       CST (no DST)
              480,   Zones.RULE_NONE,    9 * 60,       17 * 60,        // Singapore    SGT
              480,   Zones.RULE_NONE,    9 * 60 + 30,  16 * 60,        // Hong Kong    HKT

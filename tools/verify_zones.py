@@ -141,6 +141,7 @@ MARKETS = [
     # name,        iana zone,            std,  rule,      open,        close
     ("Sydney",     "Australia/Sydney",   600,  RULE_AU,   (10, 0),     (16, 0)),
     ("Tokyo",      "Asia/Tokyo",         540,  RULE_NONE, (9, 0),      (15, 30)),
+    ("Seoul",      "Asia/Seoul",         540,  RULE_NONE, (9, 0),      (15, 30)),
     ("Taipei",     "Asia/Taipei",        480,  RULE_NONE, (9, 0),      (13, 30)),
     ("Singapore",  "Asia/Singapore",     480,  RULE_NONE, (9, 0),      (17, 0)),
     ("Hong Kong",  "Asia/Hong_Kong",     480,  RULE_NONE, (9, 30),     (16, 0)),

@@ -57,6 +57,9 @@ SEARCH_FORWARD_DAYS = 16
 #:               is the safe direction: it never shows a market open that cannot be traded.
 #:   Europe    — one band standing for five exchanges, so it is only shut when all five are. Taking
 #:               the intersection means 1 May shows as trading, which is right: London is.
+#:   Tokyo/     — Tokyo and Seoul keep the same hours to the minute but nothing like the same
+#:   Seoul        calendar, so the band is open whenever either is: Japan trades through the
+#:                Korean holidays and Korea through the Japanese ones.
 #:   North      — the same, for Toronto, New York and Nasdaq. The intersection matters more here
 #:   America      than it looks: the three share a session to the minute but not a calendar, so
 #:                Canada Day closes Toronto while New York trades, and Thanksgiving and
@@ -64,14 +67,14 @@ SEARCH_FORWARD_DAYS = 16
 #:                on all of them and show the continent closed on days it is open.
 MARKETS = [
     ("Sydney",        ["XASX"],  "union"),
-    ("Tokyo",         ["XTKS"],  "union"),
+    ("Tokyo/Seoul",   ["XTKS", "XKRX"], "intersection"),
     ("Taipei",        ["XTAI"],  "union"),
     ("Singapore",     ["XSES"],  "union"),
     ("Hong Kong",     ["XHKG"],  "union"),
     ("Shanghai",      ["XSHG", "XHKG"], "union"),
     ("Mumbai",        ["XNSE"],  "union"),
     ("Europe",        ["XLON", "XETR", "XSWX", "XPAR", "XAMS"], "intersection"),
-    ("North America", ["XTSE", "XNYS", "NASDAQ"], "intersection"),
+    ("N.America",     ["XTSE", "XNYS", "NASDAQ"], "intersection"),
 ]
 
 
