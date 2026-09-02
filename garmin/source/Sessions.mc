@@ -88,7 +88,7 @@ module Sessions {
                 //
                 // This is what makes the window affordable. Sixteen days forward is sized for
                 // Lunar New Year, and walking all sixteen every time cost the Forerunner 255 its
-                // frame: eleven markets times eighteen days of daylight saving arithmetic tripped
+                // frame: every market times eighteen days of daylight saving arithmetic tripped
                 // the watchdog on a processor slower than the one this was written on. The usual
                 // answer is one or two days away and now costs one or two days.
                 nextStart = start;

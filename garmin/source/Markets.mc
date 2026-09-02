@@ -12,6 +12,12 @@ import Toybox.Lang;
 //! Midday breaks are not modelled — Tokyo, Hong Kong and Shanghai each shut for lunch and are
 //! drawn here as trading straight through.
 //!
+//! **Tokyo and Seoul are one band.** Japan and Korea keep the same offset and the same hours to
+//! the minute, so drawn separately they were two concentric arcs of identical extent — the same
+//! coincidence that put Toronto, New York and Nasdaq together. What they do not share is a
+//! calendar, and the holiday table carries that: the band is shut only when both are, so Japan's
+//! holidays leave it open on Korea's account and Korea's leave it open on Japan's.
+//!
 //! **Europe is one band here and five markets everywhere else.** London, Frankfurt, Zurich, Paris
 //! and Amsterdam open and close at the same instant to the second, all year: London trades an hour
 //! earlier by its own clock and sits an hour behind CET, and the UK and EU move their clocks
@@ -19,8 +25,14 @@ import Toybox.Lang;
 //! because their wall clocks differ; on a dial they would be five arcs drawn on top of each other.
 //! The band is kept in CET, which four of the five actually use.
 //!
-//! Toronto, New York and NASDAQ coincide in the same way, and are deliberately *not* merged: three
-//! separate American venues are worth seeing as three.
+//! **North America is one band too**, and for the same reason. Toronto, New York and Nasdaq open
+//! and close at the same instant in the same zone — their three rows in SPEC were byte for byte
+//! identical — so on a dial they were three arcs drawn on top of each other, indistinguishable and
+//! costing three bands of radius. They were kept separate for a while on the grounds that three
+//! American venues are worth seeing as three; on a face this size that turned out to buy nothing
+//! you could see. Where they genuinely differ is the calendar, and the holiday table keeps that:
+//! the band is shut only when all three are, so Canada Day and Thanksgiving each leave it open
+//! because the other side of the border is trading.
 //!
 //! The data is held as flat arrays rather than as an array of objects. A glance runs under a hard
 //! 64 KB ceiling on this device, and fourteen small objects with four fields each cost far more in
@@ -40,16 +52,14 @@ module Markets {
     //! Full names, for the dial and the wide glance.
     var NAMES as Array<String> = [
         "Sydney",
-        "Tokyo",
+        "Tokyo/Seoul",
         "Taipei",
         "Singapore",
         "Hong Kong",
         "Shanghai",
         "Mumbai",
         "Europe",
-        "Toronto",
-        "New York",
-        "NASDAQ"
+        "N.America"
     ] as Array<String>;
 
     //! Short codes, for anywhere the full name will not fit.
@@ -64,16 +74,14 @@ module Markets {
     //! Watch the two Toronto/Tokyo lookalikes: TSE is Toronto and TSEJ is Tokyo.
     var CODES as Array<String> = [
         "ASX",       // Australian Securities Exchange
-        "TSEJ",      // Tokyo Stock Exchange
+        "TSEJ/KSE",  // Tokyo Stock Exchange and Korea Exchange — one session, see below
         "TWSE",      // Taiwan Stock Exchange
         "SGX",       // Singapore Exchange
         "SEHK",      // Stock Exchange of Hong Kong
         "SEHKNTL",   // Shanghai A-shares, over Stock Connect northbound
         "NSE",       // National Stock Exchange of India
         "EUR",       // LSE, IBIS, EBS, SBF and AEB — one session, see below
-        "TSE",       // Toronto Stock Exchange
-        "NYSE",      // New York Stock Exchange
-        "NASDAQ"     // Nasdaq
+        "AMER"       // TSE, NYSE and NASDAQ — one session, see below
     ] as Array<String>;
 
     //! Four numbers per market, in NAMES order:
@@ -84,16 +92,14 @@ module Markets {
     var SPEC as Array<Number> = [
         //  offset  rule                open          close
              600,   Zones.RULE_AU,     10 * 60,       16 * 60,        // Sydney       AEST/AEDT
-             540,   Zones.RULE_NONE,    9 * 60,       15 * 60 + 30,   // Tokyo        JST
+             540,   Zones.RULE_NONE,    9 * 60,       15 * 60 + 30,   // Tokyo/Seoul  JST=KST
              480,   Zones.RULE_NONE,    9 * 60,       13 * 60 + 30,   // Taipei       CST (no DST)
              480,   Zones.RULE_NONE,    9 * 60,       17 * 60,        // Singapore    SGT
              480,   Zones.RULE_NONE,    9 * 60 + 30,  16 * 60,        // Hong Kong    HKT
              480,   Zones.RULE_NONE,    9 * 60 + 30,  15 * 60,        // Shanghai     CST
              330,   Zones.RULE_NONE,    9 * 60 + 15,  15 * 60 + 30,   // Mumbai       IST
               60,   Zones.RULE_EU,      9 * 60,       17 * 60 + 30,   // Europe       CET/CEST
-            -300,   Zones.RULE_US,      9 * 60 + 30,  16 * 60,        // Toronto      EST/EDT
-            -300,   Zones.RULE_US,      9 * 60 + 30,  16 * 60,        // New York     EST/EDT
-            -300,   Zones.RULE_US,      9 * 60 + 30,  16 * 60         // NASDAQ       EST/EDT
+            -300,   Zones.RULE_US,      9 * 60 + 30,  16 * 60         // N. America   EST/EDT
     ] as Array<Number>;
 
     //! How many markets the table holds.
